@@ -5,99 +5,62 @@
 
 using namespace geode::prelude;
 
-// Küresel Ayar Değişkeni (Hitbox açık mı kapalı mı?)
-bool g_showHitboxesEnabled = false;
+// Global durum değişkenleri
+bool g_showHitboxes = false;
+EmirGui::DraggablePanel* g_panel = nullptr;
 
-// Sürüklenen Panel için Global Referans
-EmirGui::DraggablePanel* g_myPanel = nullptr;
-
-// --- 1. OYUN İÇİ HITBOX HOOK SİSTEMİ ---
 class $modify(MyPlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontRunActions) {
         if (!PlayLayer::init(level, useReplay, dontRunActions)) return false;
-
-        // Eğer toggle açıksa oyun başladığında hitboxları zorla göster
-        if (g_showHitboxesEnabled) {
-            this->m_showHitboxes = true;
-        }
-
+        if (g_showHitboxes) this->m_showHitbox = true;
         return true;
     }
 };
 
-// --- 2. ANA MENÜ VE GUI PANEL SİSTEMİ ---
 class $modify(MyMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
 
-        auto winSize = CCDirector::get()->getWinSize();
-        auto menu = this->getChildByID("bottom-menu");
+        // Panel oluşturma
+        if (!g_panel) {
+            g_panel = EmirGui::DraggablePanel::create(200, 150);
+            g_panel->setPosition({100, 100});
+            g_panel->setVisible(false);
+            this->addChild(g_panel, 100);
 
-        // Menüdeki Mod Açma Butonu (Mavi Dişli İkonu)
-        auto openBtn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png"),
-            this,
-            menu_selector(MyMenuLayer::togglePanelVisibility)
-        );
-        openBtn->setID("emir-gui-toggle"_spr);
-        menu->addChild(openBtn);
-        menu->updateLayout();
+            auto menu = CCMenu::create();
+            menu->setPosition({100, 75});
+            g_panel->addChild(menu);
 
-        // Sürüklenebilir Paneli Oluştur (Eğer önceden oluşturulmadıysa)
-        if (!g_myPanel) {
-            g_myPanel = EmirGui::DraggablePanel::create(220, 120);
-            g_myPanel->setPosition({winSize.width / 2 - 110, winSize.height / 2 - 60});
-            g_myPanel->setVisible(false); // Başlangıçta gizli
-            
-            // Panelin içine butonlar için bir menü ekleyelim
-            auto panelMenu = CCMenu::create();
-            panelMenu->setPosition({0, 0});
-            g_myPanel->addChild(panelMenu);
+            auto label = CCLabelBMFont::create("Hitbox", "bigFont.fnt");
+            label->setScale(0.4f);
+            label->setPosition({0, 20});
+            menu->addChild(label);
 
-            // Panel Başlığı
-            auto title = CCLabelBMFont::create("Emir Mod Menu", "bigFont.fnt");
-            title->setScale(0.4f);
-            title->setPosition({110, 95});
-            g_myPanel->addChild(title);
-
-            // Hitbox Yazısı
-            auto label = CCLabelBMFont::create("Show Hitboxes", "goldFont.fnt");
-            label->setScale(0.5f);
-            label->setPosition({90, 50});
-            g_myPanel->addChild(label);
-
-            // Hitbox Toggle Butonu
-            auto hitboxToggle = EmirGui::createToggle(this, menu_selector(MyMenuLayer::onHitboxToggle));
-            hitboxToggle->setPosition({170, 50});
-            hitboxToggle->setScale(0.7f);
-            hitboxToggle->toggle(g_showHitboxesEnabled); // Mevcut durumu yükle
-            panelMenu->addChild(hitboxToggle);
-
-            // Paneli ekrana bas (Sahneye ekle)
-            this->addChild(g_myPanel, 100);
-        } else {
-            // Eğer sahne yenilenirse paneli yeni sahneye tekrar bağla
-            g_myPanel->removeFromParent();
-            this->addChild(g_myPanel, 100);
+            auto toggle = CCMenuItemToggler::createWithStandardSprites(
+                this, menu_selector(MyMenuLayer::onToggle), 0.8f
+            );
+            toggle->toggle(g_showHitboxes);
+            menu->addChild(toggle);
         }
+
+        // Açma/Kapatma Butonu
+        auto btn = CCMenuItemSpriteExtra::create(
+            CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png"),
+            this, menu_selector(MyMenuLayer::onOpenPanel)
+        );
+        auto menu = this->getChildByID("bottom-menu");
+        menu->addChild(btn);
+        menu->updateLayout();
 
         return true;
     }
 
-    // Ana butona basınca paneli açar / kapatır
-    void togglePanelVisibility(CCObject*) {
-        if (g_myPanel) {
-            g_myPanel->setVisible(!g_myPanel->isVisible());
-        }
+    void onOpenPanel(CCObject*) {
+        if (g_panel) g_panel->setVisible(!g_panel->isVisible());
     }
 
-    // Hitbox Toggle'ına basıldığında çalışacak kod
-    void onHitboxToggle(CCObject* sender) {
-        auto toggle = static_cast<CCMenuItemToggler*>(sender);
-        // Toggler durumunu tersine çeviriyoruz (isToggled() yeni durumu verir)
-        g_showHitboxesEnabled = !toggle->isToggled(); 
-        
-        // Bilgilendirme logu
-        log::info("Hitbox Durumu Değişti: {}", g_showHitboxesEnabled);
+    void onToggle(CCObject* sender) {
+        g_showHitboxes = !g_showHitboxes;
     }
 };
