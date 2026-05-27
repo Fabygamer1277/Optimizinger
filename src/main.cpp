@@ -5,14 +5,17 @@
 
 using namespace geode::prelude;
 
-// Global durum değişkenleri
 bool g_showHitboxes = false;
 EmirGui::DraggablePanel* g_panel = nullptr;
 
 class $modify(MyPlayLayer, PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontRunActions) {
         if (!PlayLayer::init(level, useReplay, dontRunActions)) return false;
-        if (g_showHitboxes) this->m_showHitbox = true;
+        
+        // GameManager üzerinden hitbox'ı zorla set et
+        if (g_showHitboxes) {
+            GameManager::get()->m_showHitbox = true;
+        }
         return true;
     }
 };
@@ -21,7 +24,6 @@ class $modify(MyMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
 
-        // Panel oluşturma
         if (!g_panel) {
             g_panel = EmirGui::DraggablePanel::create(200, 150);
             g_panel->setPosition({100, 100});
@@ -44,7 +46,6 @@ class $modify(MyMenuLayer, MenuLayer) {
             menu->addChild(toggle);
         }
 
-        // Açma/Kapatma Butonu
         auto btn = CCMenuItemSpriteExtra::create(
             CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png"),
             this, menu_selector(MyMenuLayer::onOpenPanel)
