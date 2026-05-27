@@ -1,89 +1,103 @@
 #pragma once
+
 #include <Geode/Geode.hpp>
+#include <Geode/modify/PlayLayer.hpp>
 
 using namespace geode::prelude;
 
-// Sahnedeki tüm node'ların hitbox'ını çizen overlay
 class HitboxOverlay : public CCNode {
 protected:
-    CCDrawNode* m_draw;
+    CCDrawNode* m_draw = nullptr;
 
     bool init() override {
-        if (!CCNode::init()) return false;
+        if (!CCNode::init())
+            return false;
 
         m_draw = CCDrawNode::create();
         this->addChild(m_draw);
 
         this->scheduleUpdate();
+
         return true;
     }
 
-    // Bir node ve tüm çocuklarını recursive çiz
-    void drawNode(CCNode* node) {
-        if (!node || !node->isVisible()) return;
+    void drawPlayerHitbox(PlayerObject* player) {
+        if (!player || !player->isVisible())
+            return;
 
-        auto bb     = node->boundingBox();
-        auto parent = node->getParent();
+        auto pos = player->getPosition();
 
-        // Koordinatları dünya uzayına çevir
-        CCPoint worldOrigin = parent
-            ? parent->convertToWorldSpace(bb.origin)
-            : bb.origin;
+        constexpr float width = 30.f;
+        constexpr float height = 30.f;
 
-        float w = bb.size.width;
-        float h = bb.size.height;
-
-        if (w < 1.f && h < 1.f) return; // Görünmez küçük node'ları atla
-
-        // Renk: dokunabilir (CCMenuItem) → yeşil, diğerleri → kırmızı
-        bool isTouchable = dynamic_cast<CCMenuItem*>(node) != nullptr;
-        ccColor4F fill   = isTouchable
-            ? ccc4f(0.1f, 1.0f, 0.1f, 0.25f)
-            : ccc4f(1.0f, 0.2f, 0.2f, 0.15f);
-        ccColor4F border = isTouchable
-            ? ccc4f(0.0f, 1.0f, 0.0f, 0.9f)
-            : ccc4f(1.0f, 0.3f, 0.3f, 0.7f);
-
-        CCPoint pts[4] = {
-            { worldOrigin.x,     worldOrigin.y     },
-            { worldOrigin.x + w, worldOrigin.y     },
-            { worldOrigin.x + w, worldOrigin.y + h },
-            { worldOrigin.x,     worldOrigin.y + h },
+        CCPoint points[4] = {
+            { pos.x - width / 2,  pos.y - height / 2 },
+            { pos.x + width / 2,  pos.y - height / 2 },
+            { pos.x + width / 2,  pos.y + height / 2 },
+            { pos.x - width / 2,  pos.y + height / 2 }
         };
 
-        m_draw->drawPolygon(pts, 4, fill, 1.0f, border);
-
-        // Çocukları da çiz
-        auto children = node->getChildren();
-        if (!children) return;
-        for (unsigned i = 0; i < children->count(); i++) {
-            drawNode(static_cast<CCNode*>(children->objectAtIndex(i)));
-        }
+        m_draw->drawPolygon(
+            points,
+            4,
+            ccc4f(0.f, 1.f, 0.f, 0.15f),
+            2.f,
+            ccc4f(0.f, 1.f, 0.f, 1.f)
+        );
     }
 
-    void update(float dt) override {
+    void drawObjectHitbox(GameObject* obj) {
+        if (!obj || !obj->isVisible())
+            return;
+
+        auto rect = obj->getObjectRect();
+
+        CCPoint points[4] = {
+            { rect.getMinX(), rect.getMinY() },
+            { rect.getMaxX(), rect.getMinY() },
+            { rect.getMaxX(), rect.getMaxY() },
+            { rect.getMinX(), rect.getMaxY() }
+        };
+
+        m_draw->drawPolygon(
+            points,
+            4,
+            ccc4f(1.f, 0.f, 0.f, 0.10f),
+            1.5f,
+            ccc4f(1.f, 0.f, 0.f, 0.9f)
+        );
+    }
+
+    void update(float) override {
         m_draw->clear();
 
-        auto scene = CCDirector::sharedDirector()->getRunningScene();
-        if (!scene) return;
+        auto playLayer = PlayLayer::get();
+        if (!playLayer)
+            return;
 
-        auto children = scene->getChildren();
-        if (!children) return;
+        drawPlayerHitbox(playLayer->m_player1);
+        drawPlayerHitbox(playLayer->m_player2);
 
-        for (unsigned i = 0; i < children->count(); i++) {
-            auto child = static_cast<CCNode*>(children->objectAtIndex(i));
-            if (child == this) continue; // Kendini çizme
-            drawNode(child);
+        auto objects = playLayer->m_objects;
+        if (!objects)
+            return;
+
+        CCObject* obj;
+        CCARRAY_FOREACH(objects, obj) {
+            auto gameObj = static_cast<GameObject*>(obj);
+            drawObjectHitbox(gameObj);
         }
     }
 
 public:
     static HitboxOverlay* create() {
         auto ret = new HitboxOverlay();
+
         if (ret && ret->init()) {
             ret->autorelease();
             return ret;
         }
+
         CC_SAFE_DELETE(ret);
         return nullptr;
     }
