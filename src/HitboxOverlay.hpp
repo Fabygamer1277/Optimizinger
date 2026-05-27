@@ -68,26 +68,27 @@ protected:
         );
     }
 
-    void update(float) override {
-        m_draw->clear();
+    
+void update(float) override {
+    m_draw->clear();
 
-        auto playLayer = PlayLayer::get();
-        if (!playLayer)
-            return;
+    auto playLayer = PlayLayer::get();
+    if (!playLayer)
+        return;
 
-        drawPlayerHitbox(playLayer->m_player1);
-        drawPlayerHitbox(playLayer->m_player2);
+    drawPlayerHitbox(playLayer->m_player1);
+    drawPlayerHitbox(playLayer->m_player2);
 
-        auto objects = playLayer->m_objects;
-        if (!objects)
-            return;
+    auto objects = playLayer->m_objects;
+    if (!objects)
+        return;
 
-        CCObject* obj;
-        CCARRAY_FOREACH(objects, obj) {
-            auto gameObj = static_cast<GameObject*>(obj);
-            drawObjectHitbox(gameObj);
-        }
+    for (auto obj : CCArrayExt<GameObject*>(objects)) {
+        drawObjectHitbox(obj);
     }
+}
+
+
 
 public:
     static HitboxOverlay* create() {
