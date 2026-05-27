@@ -1,76 +1,69 @@
 #include <Geode/Geode.hpp>
+#include <Geode/modify/PlayLayer.hpp>
 #include <Geode/modify/MenuLayer.hpp>
-#include <Geode/ui/GeodeUI.hpp>
 
 using namespace geode::prelude;
 
-// 1. Popup Sınıfı: Referans dosyasındaki FLAlertLayer ve Popup mantığına uygun
-class EmirMenu : public geode::Popup<> {
-protected:
-    // setup() fonksiyonu geode::Popup'ın standartıdır
-    bool setup() override {
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
-        
-        // Başlık
-        auto title = CCLabelBMFont::create("Emir Mod", "bigFont.fnt");
-        title->setPosition({winSize.width / 2, winSize.height / 2 + 60});
-        this->m_mainLayer->addChild(title);
+// Noclip durumunu saklamak için global değişken
+bool g_noclipEnabled = false;
 
-        // Menu oluştur (Toggle'lar için taşıyıcı)
-        auto menu = CCMenu::create();
-        this->m_mainLayer->addChild(menu);
-
-        // Noclip Toggle
-        auto noclip = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(EmirMenu::onToggle), 0.8f);
-        noclip->setPosition({0, 20});
-        menu->addChild(noclip);
-
-        // ESP Toggle
-        auto esp = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(EmirMenu::onToggle), 0.8f);
-        esp->setPosition({0, -20});
-        menu->addChild(esp);
-
-        return true;
+// PlayLayer kancası: Oyun içi Noclip mantığı
+class $modify(MyPlayLayer, PlayLayer) {
+    void update(float dt) override {
+        if (g_noclipEnabled && this->m_player1) {
+            this->m_player1->m_isDead = false;
+        }
+        PlayLayer::update(dt);
     }
+};
 
-    void onToggle(CCObject* sender) {
-        Notification::create("Ayar Değiştirildi!", NotificationIcon::Success)->show();
-    }
-
+// GUI Katmanı: Ekranda küçük bir kutu oluşturur
+class NoclipGui : public cocos2d::CCLayer {
 public:
-    static EmirMenu* create() {
-        auto ret = new EmirMenu();
-        // init(width, height)
-        if (ret && ret->init(300, 200)) {
+    static NoclipGui* create() {
+        auto ret = new NoclipGui();
+        if (ret && ret->init()) {
             ret->autorelease();
             return ret;
         }
         CC_SAFE_DELETE(ret);
         return nullptr;
     }
-};
 
-// 2. Ana Menü Modifikasyonu
-class $modify(MyMenuLayer, MenuLayer) {
-    bool init() {
-        if (!MenuLayer::init()) return false;
-
-        auto menu = static_cast<CCMenu*>(this->getChildByID("bottom-menu"));
-        
+    bool init() override {
+        // Bir buton oluştur (toggle görevi görecek)
         auto btn = CCMenuItemSpriteExtra::create(
-            ButtonSprite::create("Emir Mod"), 
-            this, 
-            menu_selector(MyMenuLayer::onOpenEmir)
+            ButtonSprite::create("Noclip: OFF", "bigFont.fnt", "GJ_button_01.png", .8f),
+            this,
+            menu_selector(NoclipGui::onToggle)
         );
         
-        btn->setID("emir-btn"_spr);
+        auto menu = CCMenu::create();
+        menu->setPosition({ 100, 50 }); // Ekrandaki yeri
         menu->addChild(btn);
-        menu->updateLayout();
-
+        this->addChild(menu);
+        
         return true;
     }
 
-    void onOpenEmir(CCObject* sender) {
-        EmirMenu::create()->show();
+    void onToggle(CCObject* sender) {
+        g_noclipEnabled = !g_noclipEnabled;
+        
+        // Buton yazısını güncelle
+        auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+        auto label = static_cast<ButtonSprite*>(btn->getChildren()->objectAtIndex(0));
+        label->setString(g_noclipEnabled ? "Noclip: ON" : "Noclip: OFF");
+    }
+};
+
+// Menüye GUI'yi ekle
+class $modify(MenuLayer) {
+    bool init() override {
+        if (!MenuLayer::init()) return false;
+        
+        auto gui = NoclipGui::create();
+        this->addChild(gui, 100);
+        
+        return true;
     }
 };
