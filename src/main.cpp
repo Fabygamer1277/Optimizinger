@@ -1,67 +1,38 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/MenuLayer.hpp>
-#include <Geode/modify/PlayLayer.hpp>
-#include "EmirGui.hpp"
+#include "EmirGui.hpp" // Kütüphanemizi çağırdık
 
 using namespace geode::prelude;
-
-bool g_showHitboxes = false;
-EmirGui::DraggablePanel* g_panel = nullptr;
-
-class $modify(MyPlayLayer, PlayLayer) {
-    bool init(GJGameLevel* level, bool useReplay, bool dontRunActions) {
-        if (!PlayLayer::init(level, useReplay, dontRunActions)) return false;
-        
-        // GameManager üzerinden hitbox'ı zorla set et
-        if (g_showHitboxes) {
-            GameManager::get()->m_showHitbox = true;
-        }
-        return true;
-    }
-};
 
 class $modify(MyMenuLayer, MenuLayer) {
     bool init() {
         if (!MenuLayer::init()) return false;
 
-        if (!g_panel) {
-            g_panel = EmirGui::DraggablePanel::create(200, 150);
-            g_panel->setPosition({100, 100});
-            g_panel->setVisible(false);
-            this->addChild(g_panel, 100);
-
-            auto menu = CCMenu::create();
-            menu->setPosition({100, 75});
-            g_panel->addChild(menu);
-
-            auto label = CCLabelBMFont::create("Hitbox", "bigFont.fnt");
-            label->setScale(0.4f);
-            label->setPosition({0, 20});
-            menu->addChild(label);
-
-            auto toggle = CCMenuItemToggler::createWithStandardSprites(
-                this, menu_selector(MyMenuLayer::onToggle), 0.8f
-            );
-            toggle->toggle(g_showHitboxes);
-            menu->addChild(toggle);
-        }
-
-        auto btn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("GJ_optionsBtn_001.png"),
-            this, menu_selector(MyMenuLayer::onOpenPanel)
-        );
+        // Ana menüdeki alt menüyü bulalım
         auto menu = this->getChildByID("bottom-menu");
+
+        // Kütüphanemizden butonu oluşturalım
+        auto btn = EmirGui::createCircleBtn(
+            "GJ_likeBtn_001.png", 
+            this, 
+            menu_selector(MyMenuLayer::onEmirClick)
+        );
+
+        // Geode özelliklerini tanımlayalım
+        btn->setID("emir-buton"_spr);
         menu->addChild(btn);
+        
+        // Menüyü otomatik hizala (Uğraşmanı engeller)
         menu->updateLayout();
 
         return true;
     }
 
-    void onOpenPanel(CCObject*) {
-        if (g_panel) g_panel->setVisible(!g_panel->isVisible());
-    }
-
-    void onToggle(CCObject* sender) {
-        g_showHitboxes = !g_showHitboxes;
+    void onEmirClick(CCObject* sender) {
+        FLAlertLayer::create(
+            "Başarılı!", 
+            "EmirGui kütüphanesi ve yeni dosya yapısı çalışıyor.", 
+            "Tamam"
+        )->show();
     }
 };
