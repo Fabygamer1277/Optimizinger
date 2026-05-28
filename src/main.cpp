@@ -129,14 +129,8 @@ namespace {
         }
 
         auto playerPos = player->getPosition();
-        auto children = layer->m_objectLayer->getChildren();
-        if (!children) {
-            return objects;
-        }
-
-        CCObject* child = nullptr;
-        CCARRAY_FOREACH(children, child) {
-            auto object = typeinfo_cast<GameObject*>(child);
+        for (auto node : layer->m_objectLayer->getChildrenExt()) {
+            auto object = typeinfo_cast<GameObject*>(node);
             if (!looksLikeGameplayCollision(object)) {
                 continue;
             }
