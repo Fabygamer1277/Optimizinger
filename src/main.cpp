@@ -576,6 +576,43 @@ private:
             m_speedLabel->setString(buffer);
             m_speedLabel->setColor(g_speedIndex == 2 ? ccColor3B { 185, 190, 255 } : ccColor3B { 100, 255, 125 });
         }
+        if (m_visualPage) {
+            m_visualPage->setVisible(tab == HubTab::Visual);
+        }
+        if (m_tabTitleLabel) {
+            switch (tab) {
+                case HubTab::Player:
+                    m_tabTitleLabel->setString("Player Controls");
+                    break;
+                case HubTab::Assist:
+                    m_tabTitleLabel->setString("Assist Suite");
+                    break;
+                case HubTab::Visual:
+                    m_tabTitleLabel->setString("Visual Tools");
+                    break;
+            }
+        }
+    }
+
+    void updateToggleLabel(CCLabelBMFont* label, char const* name, bool enabled, ccColor3B onColor = { 100, 255, 125 }, ccColor3B offColor = { 255, 135, 135 }) {
+        if (!label) {
+            return;
+        }
+
+        char buffer[64];
+        std::snprintf(buffer, sizeof(buffer), "%s: %s", name, enabled ? "ON" : "OFF");
+        label->setString(buffer);
+        label->setColor(enabled ? onColor : offColor);
+    }
+
+    void refreshStateLabels() {
+        this->updateToggleLabel(m_damageLabel, "No Death", g_ignoreDamage);
+        this->updateToggleLabel(m_practiceLabel, "Practice", g_practiceMode, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_autoPlayLabel, "Auto Play", g_autoPlay, { 100, 255, 125 }, { 255, 135, 135 });
+        this->updateToggleLabel(m_cubeLabel, "Cube AI", g_autoCube, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_waveLabel, "Wave AI", g_autoWave, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_platformerLabel, "Platform", g_platformerAssist, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hitboxLabel, "Hitboxes", g_showHitboxes, { 100, 255, 125 }, { 185, 190, 255 });
     }
 
     void tickStatus(float) {
