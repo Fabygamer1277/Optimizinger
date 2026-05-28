@@ -2,7 +2,10 @@
 #include <Geode/modify/PlayLayer.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstdio>
+#include <vector>
 
 using namespace geode::prelude;
 using namespace cocos2d;
@@ -11,6 +14,31 @@ using namespace cocos2d::extension;
 namespace {
     bool g_ignoreDamage = false;
     bool g_practiceMode = false;
+    bool g_autoPlay = false;
+    bool g_autoCube = true;
+    bool g_autoWave = true;
+    bool g_showHitboxes = false;
+    bool g_platformerAssist = false;
+    bool g_hidePlayer = false;
+    bool g_hideGround = false;
+    bool g_hideMG = false;
+    bool g_hideAttempts = false;
+    bool g_bgEffects = true;
+    bool g_autoHoldingJump = false;
+    bool g_autoHoldingRight = false;
+    int g_speedIndex = 2;
+
+    constexpr std::array<float, 5> kSpeedValues = { 0.50f, 0.75f, 1.00f, 1.50f, 2.00f };
+
+    enum class HubTab {
+        Player,
+        Assist,
+        Visual,
+        Utility
+    };
+
+    constexpr auto kJumpButton = static_cast<PlayerButton>(1);
+    constexpr auto kRightButton = static_cast<PlayerButton>(3);
 
     void showToast(char const* text) {
         if (auto notification = Notification::create(text)) {
@@ -35,6 +63,220 @@ namespace {
         parent->addChild(label, zOrder);
         return label;
     }
+
+    float currentSpeed() {
+        auto safeIndex = std::clamp(g_speedIndex, 0, static_cast<int>(kSpeedValues.size()) - 1);
+        return kSpeedValues.at(safeIndex);
+    }
+
+    void setDebugDrawEnabled(PlayLayer* playLayer, bool enabled) {
+        if (!playLayer) {
+            return;
+        }
+
+        if (playLayer->shouldDebugDraw() != enabled) {
+            playLayer->toggleDebugDraw();
+        }
+        playLayer->updateDebugDrawSettings();
+    }
+
+    void applyPlayLayerOptions(PlayLayer* playLayer) {
+        if (!playLayer) {
+            return;
+        }
+
+        playLayer->toggleIgnoreDamage(g_ignoreDamage);
+        if (g_practiceMode) {
+            playLayer->togglePracticeMode(true);
+        }
+        setDebugDrawEnabled(playLayer, g_showHitboxes);
+        playLayer->updateTimeMod(currentSpeed(), true, true);
+        playLayer->toggleHideAttempts(g_hideAttempts);
+        playLayer->togglePlayerVisibility(!g_hidePlayer);
+        playLayer->toggleGroundVisibility(!g_hideGround);
+        playLayer->toggleMGVisibility(!g_hideMG);
+        playLayer->toggleBGEffectVisibility(g_bgEffects);
+    }
+
+    void releaseAutoButtons(PlayerObject* player = nullptr) {
+        if (!player) {
+            if (auto playLayer = PlayLayer::get()) {
+                player = playLayer->m_player1;
+            }
+        }
+
+        if (!player) {
+            g_autoHoldingJump = false;
+            g_autoHoldingRight = false;
+            return;
+        }
+
+        if (g_autoHoldingJump) {
+            player->releaseButton(kJumpButton);
+            g_autoHoldingJump = false;
+        }
+        if (g_autoHoldingRight) {
+            player->releaseButton(kRightButton);
+            g_autoHoldingRight = false;
+        }
+    }
+
+    void setJumpHeld(PlayerObject* player, bool held) {
+        if (!player || g_autoHoldingJump == held) {
+            return;
+        }
+
+        if (held) {
+            player->pushButton(kJumpButton);
+        } else {
+            player->releaseButton(kJumpButton);
+        }
+        g_autoHoldingJump = held;
+    }
+
+    void setRightHeld(PlayerObject* player, bool held) {
+        if (!player || g_autoHoldingRight == held) {
+            return;
+        }
+
+        if (held) {
+            player->pushButton(kRightButton);
+        } else {
+            player->releaseButton(kRightButton);
+        }
+        g_autoHoldingRight = held;
+    }
+
+    CCRect expandedRect(GameObject* object, float paddingX, float paddingY) {
+        auto rect = object->getObjectRect();
+        rect.origin.x -= paddingX;
+        rect.origin.y -= paddingY;
+        rect.size.width += paddingX * 2.f;
+        rect.size.height += paddingY * 2.f;
+        return rect;
+    }
+
+    bool looksLikeGameplayCollision(GameObject* object) {
+        if (!object || !object->isVisible() || object->m_isDisabled || object->m_isGroupDisabled || object->m_isTrigger) {
+            return false;
+        }
+        if (object->m_isDecoration || object->m_isDecoration2 || object->m_isPassable || object->m_isNoTouch || object->m_isInvisible) {
+            return false;
+        }
+        return object->m_objectID > 0;
+    }
+
+    std::vector<GameObject*> collectNearbyCollisionObjects(PlayLayer* layer, PlayerObject* player, float lookAhead) {
+        std::vector<GameObject*> objects;
+        if (!layer || !player || !layer->m_objectLayer) {
+            return objects;
+        }
+
+        auto playerPos = player->getPosition();
+        for (auto node : layer->m_objectLayer->getChildrenExt()) {
+            auto object = typeinfo_cast<GameObject*>(node);
+            if (!looksLikeGameplayCollision(object)) {
+                continue;
+            }
+
+            auto objectPos = object->getPosition();
+            auto dx = objectPos.x - playerPos.x;
+            if (dx < -45.f || dx > lookAhead) {
+                continue;
+            }
+            if (std::abs(objectPos.y - playerPos.y) > 180.f) {
+                continue;
+            }
+            objects.push_back(object);
+        }
+        return objects;
+    }
+
+    bool cubeShouldJump(PlayLayer* layer, PlayerObject* player) {
+        auto playerPos = player->getPosition();
+        auto playerRect = player->getObjectRect();
+        playerRect.origin.x -= 4.f;
+        playerRect.size.width += 8.f;
+
+        auto lookAhead = std::clamp(static_cast<float>(std::abs(player->getCurrentXVelocity()) * 0.45f), 72.f, 145.f);
+        for (auto object : collectNearbyCollisionObjects(layer, player, lookAhead)) {
+            auto rect = expandedRect(object, 12.f, 8.f);
+            auto isAhead = rect.getMinX() > playerPos.x - 12.f && rect.getMinX() < playerPos.x + lookAhead;
+            auto isInLane = rect.getMaxY() > playerRect.getMinY() - 10.f && rect.getMinY() < playerRect.getMaxY() + 28.f;
+            if (isAhead && isInLane) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool waveShouldHold(PlayLayer* layer, PlayerObject* player) {
+        auto playerPos = player->getPosition();
+        auto lookAhead = std::clamp(static_cast<float>(std::abs(player->getCurrentXVelocity()) * 0.55f), 95.f, 175.f);
+        auto targetY = playerPos.y;
+        auto foundThreat = false;
+
+        for (auto object : collectNearbyCollisionObjects(layer, player, lookAhead)) {
+            auto rect = expandedRect(object, 16.f, 16.f);
+            if (rect.getMinX() < playerPos.x - 10.f || rect.getMinX() > playerPos.x + lookAhead) {
+                continue;
+            }
+
+            foundThreat = true;
+            auto centerY = rect.getMidY();
+            if (centerY < playerPos.y + 5.f) {
+                targetY = std::max(targetY, rect.getMaxY() + 58.f);
+            } else {
+                targetY = std::min(targetY, rect.getMinY() - 58.f);
+            }
+        }
+
+        if (!foundThreat) {
+            auto winHeight = CCDirector::sharedDirector()->getWinSize().height;
+            auto softTop = layer->m_objectLayer->convertToNodeSpace({ 0.f, winHeight - 44.f }).y;
+            auto softBottom = layer->m_objectLayer->convertToNodeSpace({ 0.f, 52.f }).y;
+            if (playerPos.y < softBottom) {
+                return true;
+            }
+            if (playerPos.y > softTop) {
+                return false;
+            }
+            return player->getYVelocity() < -2.0;
+        }
+
+        return targetY > playerPos.y;
+    }
+
+    void runAutoPlay(PlayLayer* layer) {
+        auto player = layer ? layer->m_player1 : nullptr;
+        if (!layer || !player || !layer->isGameplayActive() || !g_autoPlay) {
+            releaseAutoButtons(player);
+            return;
+        }
+
+        auto isCube = player->isInNormalMode();
+        auto isWave = !isCube && player->isFlying();
+
+        if (g_platformerAssist) {
+            setRightHeld(player, true);
+        } else {
+            setRightHeld(player, false);
+        }
+
+        if (isWave && g_autoWave) {
+            setJumpHeld(player, waveShouldHold(layer, player));
+            return;
+        }
+
+        if (isCube && g_autoCube) {
+            auto wantsJump = cubeShouldJump(layer, player);
+            auto groundedOrSafe = player->m_lastGroundObject || player->getYVelocity() < -0.5;
+            setJumpHeld(player, wantsJump && groundedOrSafe);
+            return;
+        }
+
+        setJumpHeld(player, false);
+    }
 }
 
 class ModernMenu : public CCLayer {
@@ -45,6 +287,23 @@ protected:
     CCLabelBMFont* m_statusLabel = nullptr;
     CCLabelBMFont* m_damageLabel = nullptr;
     CCLabelBMFont* m_practiceLabel = nullptr;
+    CCLabelBMFont* m_autoPlayLabel = nullptr;
+    CCLabelBMFont* m_cubeLabel = nullptr;
+    CCLabelBMFont* m_waveLabel = nullptr;
+    CCLabelBMFont* m_platformerLabel = nullptr;
+    CCLabelBMFont* m_hitboxLabel = nullptr;
+    CCLabelBMFont* m_hidePlayerLabel = nullptr;
+    CCLabelBMFont* m_hideGroundLabel = nullptr;
+    CCLabelBMFont* m_hideMGLabel = nullptr;
+    CCLabelBMFont* m_hideAttemptsLabel = nullptr;
+    CCLabelBMFont* m_bgEffectsLabel = nullptr;
+    CCLabelBMFont* m_speedLabel = nullptr;
+    CCLabelBMFont* m_tabTitleLabel = nullptr;
+    CCNode* m_playerPage = nullptr;
+    CCNode* m_assistPage = nullptr;
+    CCNode* m_visualPage = nullptr;
+    CCNode* m_utilityPage = nullptr;
+    HubTab m_tab = HubTab::Assist;
     bool m_open = false;
     bool m_dragging = false;
     bool m_movedTouch = false;
@@ -78,8 +337,9 @@ public:
         this->addChild(m_floatButton, 20);
 
         this->createPanel(winSize);
+        this->switchTab(HubTab::Assist);
         this->refreshStateLabels();
-        this->schedule(schedule_selector(ModernMenu::tickStatus), 0.25f);
+        this->schedule(schedule_selector(ModernMenu::tickStatus), 0.20f);
         return true;
     }
 
@@ -145,8 +405,8 @@ public:
 
 private:
     void createPanel(CCSize winSize) {
-        m_panel = CCLayerColor::create({ 0, 0, 0, 0 }, 265.f, 185.f);
-        m_panel->setPosition({ winSize.width / 2.f - 132.5f, winSize.height / 2.f - 92.5f });
+        m_panel = CCLayerColor::create({ 0, 0, 0, 0 }, 332.f, 252.f);
+        m_panel->setPosition({ winSize.width / 2.f - 166.f, winSize.height / 2.f - 126.f });
         m_panel->setScale(0.86f);
         m_panel->setOpacity(0);
         m_panel->setVisible(false);
@@ -154,46 +414,94 @@ private:
         this->addChild(m_panel, 15);
 
         m_background = CCScale9Sprite::create("GJ_square01.png");
-        m_background->setContentSize({ 265.f, 185.f });
-        m_background->setPosition({ 132.5f, 92.5f });
-        m_background->setColor({ 24, 29, 47 });
-        m_background->setOpacity(238);
+        m_background->setContentSize({ 332.f, 252.f });
+        m_background->setPosition({ 166.f, 126.f });
+        m_background->setColor({ 16, 20, 34 });
+        m_background->setOpacity(246);
         m_panel->addChild(m_background);
 
-        auto glow = CCLayerColor::create({ 57, 172, 255, 44 }, 255.f, 28.f);
-        glow->setPosition({ 5.f, 151.f });
+        auto glow = CCLayerColor::create({ 57, 172, 255, 50 }, 320.f, 36.f);
+        glow->setPosition({ 6.f, 210.f });
         m_panel->addChild(glow, 1);
 
-        makeLabel("Emir Hub", "goldFont.fnt", 0.72f, { 132.5f, 164.f }, m_panel, 2);
-        makeLabel("Geode play menu", "bigFont.fnt", 0.32f, { 132.5f, 142.f }, m_panel, 2)->setColor({ 165, 210, 255 });
+        makeLabel("Emir Hub", "goldFont.fnt", 0.76f, { 166.f, 228.f }, m_panel, 2);
+        m_tabTitleLabel = makeLabel("Assist Suite", "bigFont.fnt", 0.32f, { 166.f, 207.f }, m_panel, 2);
+        m_tabTitleLabel->setColor({ 165, 210, 255 });
 
-        m_damageLabel = this->addActionButton("No Death", { 74.f, 110.f }, menu_selector(ModernMenu::onToggleDamage), "damage-toggle"_spr);
-        m_practiceLabel = this->addActionButton("Practice", { 191.f, 110.f }, menu_selector(ModernMenu::onTogglePractice), "practice-toggle"_spr);
-        this->addActionButton("Progress", { 74.f, 73.f }, menu_selector(ModernMenu::onProgressbar), "progress-toggle"_spr);
-        this->addActionButton("Info", { 191.f, 73.f }, menu_selector(ModernMenu::onInfoLabel), "info-toggle"_spr);
-        this->addActionButton("Restart", { 74.f, 36.f }, menu_selector(ModernMenu::onRestart), "restart-level"_spr);
-        this->addActionButton("About", { 191.f, 36.f }, menu_selector(ModernMenu::onAbout), "about-menu"_spr);
+        this->addTabButton("Player", { 49.f, 184.f }, menu_selector(ModernMenu::onPlayerTab), "player-tab"_spr);
+        this->addTabButton("Assist", { 127.f, 184.f }, menu_selector(ModernMenu::onAssistTab), "assist-tab"_spr);
+        this->addTabButton("Visual", { 205.f, 184.f }, menu_selector(ModernMenu::onVisualTab), "visual-tab"_spr);
+        this->addTabButton("Utils", { 283.f, 184.f }, menu_selector(ModernMenu::onUtilityTab), "utility-tab"_spr);
 
-        m_statusLabel = makeLabel("Ready", "chatFont.fnt", 0.55f, { 132.5f, 12.f }, m_panel, 2);
+        m_playerPage = CCNode::create();
+        m_assistPage = CCNode::create();
+        m_visualPage = CCNode::create();
+        m_utilityPage = CCNode::create();
+        m_panel->addChild(m_playerPage, 3);
+        m_panel->addChild(m_assistPage, 3);
+        m_panel->addChild(m_visualPage, 3);
+        m_panel->addChild(m_utilityPage, 3);
+
+        m_damageLabel = this->addActionButton(m_playerPage, "No Death", { 73.f, 135.f }, menu_selector(ModernMenu::onToggleDamage), "damage-toggle"_spr);
+        m_practiceLabel = this->addActionButton(m_playerPage, "Practice", { 166.f, 135.f }, menu_selector(ModernMenu::onTogglePractice), "practice-toggle"_spr);
+        m_hidePlayerLabel = this->addActionButton(m_playerPage, "Hide P1", { 259.f, 135.f }, menu_selector(ModernMenu::onToggleHidePlayer), "hide-player"_spr);
+        m_hideAttemptsLabel = this->addActionButton(m_playerPage, "Attempts", { 73.f, 82.f }, menu_selector(ModernMenu::onToggleHideAttempts), "hide-attempts"_spr);
+        this->addActionButton(m_playerPage, "Progress", { 166.f, 82.f }, menu_selector(ModernMenu::onProgressbar), "progress-toggle"_spr);
+        this->addActionButton(m_playerPage, "Info", { 259.f, 82.f }, menu_selector(ModernMenu::onInfoLabel), "info-toggle"_spr);
+
+        m_autoPlayLabel = this->addActionButton(m_assistPage, "Auto Play", { 73.f, 135.f }, menu_selector(ModernMenu::onToggleAutoPlay), "autoplay-toggle"_spr);
+        m_cubeLabel = this->addActionButton(m_assistPage, "Cube AI", { 166.f, 135.f }, menu_selector(ModernMenu::onToggleCube), "cube-toggle"_spr);
+        m_waveLabel = this->addActionButton(m_assistPage, "Wave AI", { 259.f, 135.f }, menu_selector(ModernMenu::onToggleWave), "wave-toggle"_spr);
+        m_platformerLabel = this->addActionButton(m_assistPage, "Platform", { 73.f, 82.f }, menu_selector(ModernMenu::onTogglePlatformer), "platform-toggle"_spr);
+        this->addActionButton(m_assistPage, "Auto All", { 166.f, 82.f }, menu_selector(ModernMenu::onAutoAll), "auto-all"_spr);
+        this->addActionButton(m_assistPage, "Release", { 259.f, 82.f }, menu_selector(ModernMenu::onReleaseInputs), "release-inputs"_spr);
+
+        m_hitboxLabel = this->addActionButton(m_visualPage, "Hitboxes", { 73.f, 135.f }, menu_selector(ModernMenu::onToggleHitboxes), "hitbox-toggle"_spr);
+        m_hideGroundLabel = this->addActionButton(m_visualPage, "Ground", { 166.f, 135.f }, menu_selector(ModernMenu::onToggleHideGround), "hide-ground"_spr);
+        m_hideMGLabel = this->addActionButton(m_visualPage, "MG", { 259.f, 135.f }, menu_selector(ModernMenu::onToggleHideMG), "hide-mg"_spr);
+        m_bgEffectsLabel = this->addActionButton(m_visualPage, "BG FX", { 73.f, 82.f }, menu_selector(ModernMenu::onToggleBGEffects), "bg-effects"_spr);
+        this->addActionButton(m_visualPage, "Debug", { 166.f, 82.f }, menu_selector(ModernMenu::onDebugPulse), "debug-pulse"_spr);
+        this->addActionButton(m_visualPage, "Glitter", { 259.f, 82.f }, menu_selector(ModernMenu::onGlitter), "glitter-toggle"_spr);
+
+        m_speedLabel = this->addActionButton(m_utilityPage, "Speed", { 73.f, 135.f }, menu_selector(ModernMenu::onSpeedUp), "speed-up"_spr);
+        this->addActionButton(m_utilityPage, "Slower", { 166.f, 135.f }, menu_selector(ModernMenu::onSpeedDown), "speed-down"_spr);
+        this->addActionButton(m_utilityPage, "Normal", { 259.f, 135.f }, menu_selector(ModernMenu::onSpeedNormal), "speed-normal"_spr);
+        this->addActionButton(m_utilityPage, "Restart", { 73.f, 82.f }, menu_selector(ModernMenu::onRestart), "restart-level"_spr);
+        this->addActionButton(m_utilityPage, "Clear CP", { 166.f, 82.f }, menu_selector(ModernMenu::onClearCheckpoints), "clear-checkpoints"_spr);
+        this->addActionButton(m_utilityPage, "About", { 259.f, 82.f }, menu_selector(ModernMenu::onAbout), "about-menu"_spr);
+
+        m_statusLabel = makeLabel("Ready", "chatFont.fnt", 0.52f, { 166.f, 20.f }, m_panel, 2);
         m_statusLabel->setColor({ 170, 240, 170 });
     }
 
-    CCLabelBMFont* addActionButton(char const* text, CCPoint position, SEL_MenuHandler callback, char const* nodeID) {
+    void addTabButton(char const* text, CCPoint position, SEL_MenuHandler callback, char const* nodeID) {
         auto menu = CCMenu::create();
         menu->setPosition(CCPointZero);
-        m_panel->addChild(menu, 3);
+        m_panel->addChild(menu, 4);
 
-        auto sprite = ButtonSprite::create(text, 96, true, "bigFont.fnt", "GJ_button_01.png", 25.f, 0.45f);
+        auto sprite = ButtonSprite::create(text, 70, true, "bigFont.fnt", "GJ_button_05.png", 21.f, 0.34f);
+        auto button = CCMenuItemSpriteExtra::create(sprite, this, callback);
+        button->setPosition(position);
+        button->setID(nodeID);
+        menu->addChild(button);
+    }
+
+    CCLabelBMFont* addActionButton(CCNode* page, char const* text, CCPoint position, SEL_MenuHandler callback, char const* nodeID) {
+        auto menu = CCMenu::create();
+        menu->setPosition(CCPointZero);
+        page->addChild(menu, 3);
+
+        auto sprite = ButtonSprite::create(text, 82, true, "bigFont.fnt", "GJ_button_01.png", 24.f, 0.34f);
         auto button = CCMenuItemSpriteExtra::create(sprite, this, callback);
         button->setPosition(position);
         button->setID(nodeID);
         menu->addChild(button);
 
         auto label = CCLabelBMFont::create(text, "bigFont.fnt");
-        label->setScale(0.32f);
-        label->setPosition(position + CCPoint { 0.f, -20.f });
-        label->setOpacity(215);
-        m_panel->addChild(label, 2);
+        label->setScale(0.28f);
+        label->setPosition(position + CCPoint { 0.f, -22.f });
+        label->setOpacity(225);
+        page->addChild(label, 2);
         return label;
     }
 
@@ -224,14 +532,67 @@ private:
         ));
     }
 
-    void refreshStateLabels() {
-        if (m_damageLabel) {
-            m_damageLabel->setString(g_ignoreDamage ? "No Death: ON" : "No Death: OFF");
-            m_damageLabel->setColor(g_ignoreDamage ? ccColor3B { 100, 255, 125 } : ccColor3B { 255, 135, 135 });
+    void switchTab(HubTab tab) {
+        m_tab = tab;
+        if (m_playerPage) {
+            m_playerPage->setVisible(tab == HubTab::Player);
         }
-        if (m_practiceLabel) {
-            m_practiceLabel->setString(g_practiceMode ? "Practice: ON" : "Practice: OFF");
-            m_practiceLabel->setColor(g_practiceMode ? ccColor3B { 100, 255, 125 } : ccColor3B { 255, 220, 120 });
+        if (m_assistPage) {
+            m_assistPage->setVisible(tab == HubTab::Assist);
+        }
+        if (m_visualPage) {
+            m_visualPage->setVisible(tab == HubTab::Visual);
+        }
+        if (m_utilityPage) {
+            m_utilityPage->setVisible(tab == HubTab::Utility);
+        }
+        if (m_tabTitleLabel) {
+            switch (tab) {
+                case HubTab::Player:
+                    m_tabTitleLabel->setString("Player Controls");
+                    break;
+                case HubTab::Assist:
+                    m_tabTitleLabel->setString("Assist Suite");
+                    break;
+                case HubTab::Visual:
+                    m_tabTitleLabel->setString("Visual Tools");
+                    break;
+                case HubTab::Utility:
+                    m_tabTitleLabel->setString("Utility Deck");
+                    break;
+            }
+        }
+    }
+
+    void updateToggleLabel(CCLabelBMFont* label, char const* name, bool enabled, ccColor3B onColor = { 100, 255, 125 }, ccColor3B offColor = { 255, 135, 135 }) {
+        if (!label) {
+            return;
+        }
+
+        char buffer[64];
+        std::snprintf(buffer, sizeof(buffer), "%s: %s", name, enabled ? "ON" : "OFF");
+        label->setString(buffer);
+        label->setColor(enabled ? onColor : offColor);
+    }
+
+    void refreshStateLabels() {
+        this->updateToggleLabel(m_damageLabel, "No Death", g_ignoreDamage);
+        this->updateToggleLabel(m_practiceLabel, "Practice", g_practiceMode, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_autoPlayLabel, "Auto Play", g_autoPlay, { 100, 255, 125 }, { 255, 135, 135 });
+        this->updateToggleLabel(m_cubeLabel, "Cube AI", g_autoCube, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_waveLabel, "Wave AI", g_autoWave, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_platformerLabel, "Platform", g_platformerAssist, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hitboxLabel, "Hitboxes", g_showHitboxes, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hidePlayerLabel, "Hide P1", g_hidePlayer, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hideGroundLabel, "Ground", g_hideGround, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hideMGLabel, "MG", g_hideMG, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hideAttemptsLabel, "Attempts", g_hideAttempts, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_bgEffectsLabel, "BG FX", g_bgEffects, { 100, 255, 125 }, { 255, 135, 135 });
+        if (m_speedLabel) {
+            char buffer[64];
+            std::snprintf(buffer, sizeof(buffer), "Speed: %.2fx", currentSpeed());
+            m_speedLabel->setString(buffer);
+            m_speedLabel->setColor(g_speedIndex == 2 ? ccColor3B { 185, 190, 255 } : ccColor3B { 100, 255, 125 });
         }
     }
 
@@ -242,25 +603,39 @@ private:
         }
 
         auto percent = playLayer->getCurrentPercent();
-        char buffer[96];
+        char buffer[128];
         std::snprintf(
             buffer,
             sizeof(buffer),
-            "%.2f%%  |  %s%s",
+            "%.2f%% | %s %s %.2fx %s",
             percent,
-            g_ignoreDamage ? "NoDeath " : "",
-            g_practiceMode ? "Practice" : "Normal"
+            g_autoPlay ? "Auto" : "Manual",
+            g_showHitboxes ? "Hitbox" : "Clean",
+            currentSpeed(),
+            g_ignoreDamage ? "Safe" : "Live"
         );
         m_statusLabel->setString(buffer);
+        this->refreshStateLabels();
     }
 
     void applyGameplayOptions() {
-        if (auto playLayer = PlayLayer::get()) {
-            playLayer->toggleIgnoreDamage(g_ignoreDamage);
-            if (g_practiceMode) {
-                playLayer->togglePracticeMode(true);
-            }
-        }
+        applyPlayLayerOptions(PlayLayer::get());
+    }
+
+    void onPlayerTab(CCObject*) {
+        this->switchTab(HubTab::Player);
+    }
+
+    void onAssistTab(CCObject*) {
+        this->switchTab(HubTab::Assist);
+    }
+
+    void onVisualTab(CCObject*) {
+        this->switchTab(HubTab::Visual);
+    }
+
+    void onUtilityTab(CCObject*) {
+        this->switchTab(HubTab::Utility);
     }
 
     void onToggleDamage(CCObject*) {
@@ -279,6 +654,105 @@ private:
         showToast(g_practiceMode ? "Practice Mode enabled" : "Practice Mode disabled");
     }
 
+    void onToggleAutoPlay(CCObject*) {
+        g_autoPlay = !g_autoPlay;
+        if (!g_autoPlay) {
+            releaseAutoButtons();
+        }
+        this->refreshStateLabels();
+        showToast(g_autoPlay ? "Auto Play enabled" : "Auto Play disabled");
+    }
+
+    void onToggleCube(CCObject*) {
+        g_autoCube = !g_autoCube;
+        this->refreshStateLabels();
+        showToast(g_autoCube ? "Cube Auto enabled" : "Cube Auto disabled");
+    }
+
+    void onToggleWave(CCObject*) {
+        g_autoWave = !g_autoWave;
+        this->refreshStateLabels();
+        showToast(g_autoWave ? "Wave Auto enabled" : "Wave Auto disabled");
+    }
+
+    void onTogglePlatformer(CCObject*) {
+        g_platformerAssist = !g_platformerAssist;
+        if (!g_platformerAssist) {
+            releaseAutoButtons();
+        }
+        this->refreshStateLabels();
+        showToast(g_platformerAssist ? "Platform assist enabled" : "Platform assist disabled");
+    }
+
+    void onAutoAll(CCObject*) {
+        g_autoPlay = true;
+        g_autoCube = true;
+        g_autoWave = true;
+        g_platformerAssist = true;
+        this->applyGameplayOptions();
+        this->refreshStateLabels();
+        showToast("Auto suite enabled");
+    }
+
+    void onReleaseInputs(CCObject*) {
+        releaseAutoButtons();
+        showToast("Auto inputs released");
+    }
+
+    void onToggleHidePlayer(CCObject*) {
+        g_hidePlayer = !g_hidePlayer;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->togglePlayerVisibility(!g_hidePlayer);
+        }
+        this->refreshStateLabels();
+        showToast(g_hidePlayer ? "Player hidden" : "Player visible");
+    }
+
+    void onToggleHideAttempts(CCObject*) {
+        g_hideAttempts = !g_hideAttempts;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->toggleHideAttempts(g_hideAttempts);
+        }
+        this->refreshStateLabels();
+        showToast(g_hideAttempts ? "Attempts hidden" : "Attempts visible");
+    }
+
+    void onToggleHideGround(CCObject*) {
+        g_hideGround = !g_hideGround;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->toggleGroundVisibility(!g_hideGround);
+        }
+        this->refreshStateLabels();
+        showToast(g_hideGround ? "Ground hidden" : "Ground visible");
+    }
+
+    void onToggleHideMG(CCObject*) {
+        g_hideMG = !g_hideMG;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->toggleMGVisibility(!g_hideMG);
+        }
+        this->refreshStateLabels();
+        showToast(g_hideMG ? "Middleground hidden" : "Middleground visible");
+    }
+
+    void onToggleBGEffects(CCObject*) {
+        g_bgEffects = !g_bgEffects;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->toggleBGEffectVisibility(g_bgEffects);
+        }
+        this->refreshStateLabels();
+        showToast(g_bgEffects ? "BG effects enabled" : "BG effects disabled");
+    }
+
+    void onToggleHitboxes(CCObject*) {
+        g_showHitboxes = !g_showHitboxes;
+        if (auto playLayer = PlayLayer::get()) {
+            setDebugDrawEnabled(playLayer, g_showHitboxes);
+        }
+        this->refreshStateLabels();
+        showToast(g_showHitboxes ? "Hitboxes enabled" : "Hitboxes disabled");
+    }
+
     void onProgressbar(CCObject*) {
         if (auto playLayer = PlayLayer::get()) {
             playLayer->toggleProgressbar();
@@ -293,7 +767,56 @@ private:
         }
     }
 
+    void onDebugPulse(CCObject*) {
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->updateDebugDrawSettings();
+            showToast("Debug draw refreshed");
+        }
+    }
+
+    void onGlitter(CCObject*) {
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->toggleGlitter(true);
+            showToast("Glitter refreshed");
+        }
+    }
+
+    void onSpeedUp(CCObject*) {
+        g_speedIndex = std::min(g_speedIndex + 1, static_cast<int>(kSpeedValues.size()) - 1);
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->updateTimeMod(currentSpeed(), true, true);
+        }
+        this->refreshStateLabels();
+        showToast("Speed increased");
+    }
+
+    void onSpeedDown(CCObject*) {
+        g_speedIndex = std::max(g_speedIndex - 1, 0);
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->updateTimeMod(currentSpeed(), true, true);
+        }
+        this->refreshStateLabels();
+        showToast("Speed decreased");
+    }
+
+    void onSpeedNormal(CCObject*) {
+        g_speedIndex = 2;
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->updateTimeMod(currentSpeed(), true, true);
+        }
+        this->refreshStateLabels();
+        showToast("Speed reset");
+    }
+
+    void onClearCheckpoints(CCObject*) {
+        if (auto playLayer = PlayLayer::get()) {
+            playLayer->removeAllCheckpoints();
+            showToast("Checkpoints cleared");
+        }
+    }
+
     void onRestart(CCObject*) {
+        releaseAutoButtons();
         if (auto playLayer = PlayLayer::get()) {
             playLayer->resetLevelFromStart();
             this->applyGameplayOptions();
@@ -304,8 +827,8 @@ private:
     void onAbout(CCObject*) {
         FLAlertLayer::create(
             "Emir Hub",
-            "<cg>Emir Hub</c> is a compact in-level Geode menu.\n\n"
-            "Drag the <cy>EH</c> bubble anywhere, tap it to open, and use safe PlayLayer actions from the SDK reference.",
+            "<cg>Emir Hub</c> is an all-in-one playtest hub with tabs for Player, Assist, Visual and Utility tools.\n\n"
+            "Includes No Death, Practice, Auto Play, cube/wave assists, platform helpers, hitboxes, visibility toggles, speed control and checkpoint tools.",
             "OK"
         )->show();
     }
@@ -321,18 +844,23 @@ class $modify(EmirHubPlayLayer, PlayLayer) {
             this->addChild(menu, 9999);
         }
 
-        this->toggleIgnoreDamage(g_ignoreDamage);
-        if (g_practiceMode) {
-            this->togglePracticeMode(true);
-        }
+        applyPlayLayerOptions(this);
         return true;
     }
 
+    void postUpdate(float dt) {
+        PlayLayer::postUpdate(dt);
+        runAutoPlay(this);
+    }
+
     void resetLevel() {
+        releaseAutoButtons(this->m_player1);
         PlayLayer::resetLevel();
-        this->toggleIgnoreDamage(g_ignoreDamage);
-        if (g_practiceMode) {
-            this->togglePracticeMode(true);
-        }
+        applyPlayLayerOptions(this);
+    }
+
+    void onQuit() {
+        releaseAutoButtons(this->m_player1);
+        PlayLayer::onQuit();
     }
 };
