@@ -596,6 +596,27 @@ private:
         }
     }
 
+    void updateToggleLabel(CCLabelBMFont* label, char const* name, bool enabled, ccColor3B onColor = { 100, 255, 125 }, ccColor3B offColor = { 255, 135, 135 }) {
+        if (!label) {
+            return;
+        }
+
+        char buffer[64];
+        std::snprintf(buffer, sizeof(buffer), "%s: %s", name, enabled ? "ON" : "OFF");
+        label->setString(buffer);
+        label->setColor(enabled ? onColor : offColor);
+    }
+
+    void refreshStateLabels() {
+        this->updateToggleLabel(m_damageLabel, "No Death", g_ignoreDamage);
+        this->updateToggleLabel(m_practiceLabel, "Practice", g_practiceMode, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_autoPlayLabel, "Auto Play", g_autoPlay, { 100, 255, 125 }, { 255, 135, 135 });
+        this->updateToggleLabel(m_cubeLabel, "Cube AI", g_autoCube, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_waveLabel, "Wave AI", g_autoWave, { 100, 255, 125 }, { 255, 220, 120 });
+        this->updateToggleLabel(m_platformerLabel, "Platform", g_platformerAssist, { 100, 255, 125 }, { 185, 190, 255 });
+        this->updateToggleLabel(m_hitboxLabel, "Hitboxes", g_showHitboxes, { 100, 255, 125 }, { 185, 190, 255 });
+    }
+
     void tickStatus(float) {
         auto playLayer = PlayLayer::get();
         if (!m_statusLabel || !playLayer) {
@@ -620,6 +641,22 @@ private:
 
     void applyGameplayOptions() {
         applyPlayLayerOptions(PlayLayer::get());
+    }
+
+    void onPlayerTab(CCObject*) {
+        this->switchTab(HubTab::Player);
+    }
+
+    void onAssistTab(CCObject*) {
+        this->switchTab(HubTab::Assist);
+    }
+
+    void onVisualTab(CCObject*) {
+        this->switchTab(HubTab::Visual);
+    }
+
+    void onUtilityTab(CCObject*) {
+        this->switchTab(HubTab::Utility);
     }
 
     void onPlayerTab(CCObject*) {
