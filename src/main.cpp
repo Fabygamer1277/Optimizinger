@@ -416,6 +416,8 @@ namespace {
         if (!scan.obstacleAhead && !scan.wallAhead) {
             return false;
         }
+        return player->m_isUpsideDown ? yVelocity > 2.2f : yVelocity < -2.2f;
+    }
 
         auto grounded = player->m_isOnGround || player->m_lastGroundObject || player->m_objectSnappedTo;
         auto yVelocity = player->getYVelocity();
