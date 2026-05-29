@@ -13,11 +13,11 @@ Emir Hub is an in-level Geode playtest menu for Geometry Dash. It is built as a 
 - **Attempts / Progress / Info**: quick UI visibility controls.
 
 ### Assist tab
-- **Auto Play**: enables the detailed assist engine.
-- **Avoid Solid**: predicts lethal contact with `canCollide`/solid objects and jumps before side/head hits while still allowing safe floor landings.
-- **Avoid Spike**: treats spike/saw/hazard objects as lethal from every side and routes/taps away from them.
-- **Platform**: optional right-move hold for platformer-style tests.
-- **Auto All**: enables detailed Auto Play with both solid and spike avoidance.
+- **Auto Play**: enables the assist engine.
+- **Ground AI**: detects nearby solid collision objects, spikes, and wall-like blockers, then jumps/taps for cube, ball, robot, and spider gameplay.
+- **Air AI**: steers or taps around nearby obstacles and level bounds for ship, UFO, wave, and swing gameplay.
+- **Platform**: holds the right movement input for platformer-style tests.
+- **Auto All**: enables the full all-mode assist stack at once.
 - **Release**: force-releases any auto-held inputs.
 
 ### Visual tab
@@ -35,7 +35,7 @@ Emir Hub is an in-level Geode playtest menu for Geometry Dash. It is built as a 
 
 ## Notes
 
-Auto Play is a heuristic playtest assist, not a perfect verifier. It predicts the player's near-future hitbox against visible solid, spike, saw, and hazard objects so it can avoid lethal side/head/touch collisions while keeping normal floor contact safe. It supports cube, ship, ball, UFO, wave, robot, spider, swing, and platformer-style tests.
+Auto Play is a heuristic playtest assist, not a perfect verifier. It scans visible gameplay collision objects ahead of the player and supports cube, ship, ball, UFO, wave, robot, spider, swing, and platformer-style tests. It works best with **No Death** enabled while tuning hard levels.
 
 ## Build instructions
 
