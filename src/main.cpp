@@ -10,7 +10,7 @@
 using namespace geode::prelude;
 using namespace cocos2d;
 using namespace cocos2d::extension;
- 
+
 namespace {
     bool g_ignoreDamage = false;
     bool g_practiceMode = false;
