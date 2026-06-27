@@ -1,3 +1,1 @@
-# Template Mod
-
-Edit about.md to change this
+Mega Decorator. Go see featurs in editor, Farewell!
