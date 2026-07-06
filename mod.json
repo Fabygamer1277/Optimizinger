@@ -10,8 +10,5 @@
     "name": "FPS Optimizer",
     "developer": "Fabygamer1277",
     "description": "Mod para mejorar FPS",
-    "version": "1.0.0",
-    "dependencies": {
-        "geode.node-ids": ">=v1.23.3"
-    }
+    "version": "1.0.0"
 }
