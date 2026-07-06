@@ -1,19 +1,17 @@
 {
-	"geode": "5.7.1",
-	"gd": {
-		"win": "2.2081",
-		"android": "2.2081",
-		"mac": "2.2081",
-		"ios": "2.2081"
-	},
-    "id": "tu.nombre.fps-opt",
+    "geode": "5.7.1",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081",
+        "mac": "2.2081",
+        "ios": "2.2081"
+    },
+    "id": "fabygamer1277.fps-optimizer",
     "name": "FPS Optimizer",
-    "version": "1.0.0",
     "developer": "Fabygamer1277",
     "description": "Mod para mejorar FPS",
+    "version": "1.0.0",
     "dependencies": {
         "geode.node-ids": ">=v1.23.3"
     }
 }
-
-
