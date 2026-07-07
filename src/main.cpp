@@ -89,7 +89,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Algoritmo de Esquive Dinámico Inteligente)
+// 2. PAUSEMENU HOOK (Inyección Limpia en el Menú Nativo de Esquina)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -100,17 +100,12 @@ class $modify(MyPauseLayer, PauseLayer) {
     }
 
     void customSetup() {
+        // Ejecutamos la carga base del juego primero
         PauseLayer::customSetup();
 
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
-        
-        // Creamos nuestro contenedor propio para el botón (+)
-        auto topMenu = CCMenu::create();
-        this->addChild(topMenu, 150);
-
-        // Textura y configuración del botón verde (+)
+        // Creamos la textura de la tuerca/más (+) verde reescalado
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
-        buttonSprite->setScale(0.75f); // Tamaño exacto al botón de configuración nativo
+        buttonSprite->setScale(0.75f); // Tamaño idéntico a la tuerca estándar
 
         auto myButton = CCMenuItemSpriteExtra::create(
             buttonSprite,
@@ -118,47 +113,23 @@ class $modify(MyPauseLayer, PauseLayer) {
             menu_selector(MyPauseLayer::onMyMenuButton)
         );
         myButton->setID("fps-optimizer-pause-button");
-        topMenu->addChild(myButton);
 
-        // --------------------------------------------------------------------
-        // DETECCIÓN DINÁMICA DE COMPETENCIA DE MENÚS (ESQUIVE)
-        // --------------------------------------------------------------------
-        float lowestYFound = winSize.height - 30.0f;
-        bool conflictDetected = false;
-
-        // Intento 1: Buscar directamente por el ID del menú del Death Tracker si existe
-        auto deathTrackerMenu = this->getChildByID("death-tracker-menu"); // ID común o similar
+        // BUSQUEDA DIRECTA POR ID NATIVO: Obtenemos el contenedor izquierdo oficial del PauseLayer
+        auto leftMenu = this->getChildByID("left-menu");
         
-        // Intento 2: Escaneo de nodos en la esquina superior izquierda (Soporte Geode v5)
-        for (auto child : this->getChildrenExt()) {
-            auto menu = dynamic_cast<CCMenu*>(child);
-            if (menu && menu != topMenu) {
-                // Si el menú está ubicado en la franja izquierda superior
-                if (menu->getPositionX() < 120.0f && menu->getPositionY() > (winSize.height - 120.0f)) {
-                    
-                    // Analizamos la posición real más baja de sus elementos hijos
-                    for (auto btnChild : menu->getChildrenExt()) {
-                        float absoluteChildY = menu->getPositionY() + btnChild->getPositionY();
-                        float childBottomEdge = absoluteChildY - (btnChild->getContentSize().height * btnChild->getScale() / 2.0f);
-                        
-                        if (childBottomEdge < lowestYFound) {
-                            lowestYFound = childBottomEdge;
-                            conflictDetected = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Asignación de posición final responsiva
-        if (conflictDetected) {
-            // Si hay un mod arriba, nos colocamos 25 unidades abajo de su borde inferior
-            topMenu->setPosition({30.0f, lowestYFound - 25.0f});
+        if (leftMenu) {
+            // Si Geode/GD tienen el contenedor activo, metemos el botón ahí directamente
+            leftMenu->addChild(myButton);
+            // Forzamos a que el Layout recalcule las posiciones verticales automáticamente
+            leftMenu->updateLayout();
         } else {
-            // Si la esquina está completamente limpia, nos colocamos arriba de forma nativa
-            topMenu->setPosition({30.0f, winSize.height - 30.0f});
+            // Plan de respaldo de emergencia si el layout nativo no responde
+            auto winSize = CCDirector::sharedDirector()->getWinSize();
+            auto fallbackMenu = CCMenu::create();
+            fallbackMenu->setPosition({30.0f, winSize.height - 75.0f}); // Forzado abajo por defecto
+            this->addChild(fallbackMenu, 150);
+            fallbackMenu->addChild(myButton);
+            fallbackMenu->updateLayout();
         }
-
-        topMenu->updateLayout();
     }
 };
