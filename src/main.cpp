@@ -1,5 +1,6 @@
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
+#include <Geode/ui/InputNode.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
@@ -8,7 +9,7 @@ using namespace geode::prelude;
 static float g_targetTPS = 60.0f;
 
 // ============================================================================
-// POPUP CORRECTO (La forma moderna en Geode)
+// POPUP CORRECTO
 // ============================================================================
 class MyOptimizationMenu : public Popup<> {
 protected:
@@ -16,40 +17,36 @@ protected:
 
     bool setup() override {
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        this->setTitle("FPS/TPS");
+        this->setTitle("Configuracion de TPS");
 
-        m_input = InputNode::create(100, "TPS", "bigFont.fnt", 5);
+        // InputNode se crea correctamente usando los parámetros de la UI de Geode
+        m_input = InputNode::create(100, "TPS", "bigFont.fnt");
         m_input->setPosition(winSize / 2);
         m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
-        this->m_mainLayer->addChild(m_input);
+        this->m_buttonMenu->addChild(m_input); // Añadimos al menu del popup
 
         auto saveBtn = CCMenuItemSpriteExtra::create(
-            ButtonSprite::create("Save"), this, menu_selector(MyOptimizationMenu::onSave));
-        auto menu = CCMenu::create();
-        menu->addChild(saveBtn);
-        menu->setPosition({winSize.width / 2, (winSize.height / 2) - 50});
-        this->m_mainLayer->addChild(menu);
+            ButtonSprite::create("Guardar"), this, menu_selector(MyOptimizationMenu::onSave));
+        saveBtn->setPosition({0, -60});
+        this->m_buttonMenu->addChild(saveBtn);
 
         return true;
     }
 
     void onSave(CCObject*) {
         std::string raw = m_input->getString();
-        size_t point = raw.find('.');
-        if (point != std::string::npos) raw = raw.substr(0, point);
-        
         int val = std::stoi(raw.empty() ? "60" : raw);
         if (val > 1 && val < 9999) {
             Mod::get()->setSavedValue<int>("tps-val", val);
             g_targetTPS = (float)val;
-            Notification::create("TPS guardado: " + std::to_string(val))->show();
+            Notification::create("TPS fijado a: " + std::to_string(val))->show();
         }
     }
 
 public:
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
-        if (ret && ret->init(320, 240)) {
+        if (ret && ret->init(320.0f, 240.0f)) {
             ret->autorelease();
             return ret;
         }
@@ -59,7 +56,7 @@ public:
 };
 
 // ============================================================================
-// LÓGICA DE FÍSICA
+// LÓGICA FÍSICA
 // ============================================================================
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
