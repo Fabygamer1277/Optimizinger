@@ -4,43 +4,44 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Using compatible FLAlertLayer interface layout)
+// 1. UI MENU DEFINITION (Using proper types to fix the assigning compilation error)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
     bool init() {
-        // Create the core layer initialization check sequence
         if (!FLAlertLayer::init(150)) return false;
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Create the background main panel box sprite frame element
+        // Create a standard CCLayer container first to avoid type mismatch
+        auto mainLayer = CCLayer::create();
+        this->addChild(mainLayer);
+        this->m_mainLayer = mainLayer;
+
+        // Create and add the background texture inside our wrapper layer
         auto backgroundLayer = CCScale9Sprite::create("GJ_square01.png");
         backgroundLayer->setContentSize({320, 240});
         backgroundLayer->setPosition(winSize / 2);
-        this->addChild(backgroundLayer);
+        mainLayer->addChild(backgroundLayer);
 
-        // Add layer container element reference to process touches inside UI
-        this->m_mainLayer = backgroundLayer;
-
-        // Setup window custom layout title text
+        // Setup custom text title positioned relative to the center screen
         auto titleLabel = CCLabelBMFont::create("FPS/TPS", "goldFont.fnt");
         titleLabel->setPosition({winSize.width / 2, (winSize.height / 2) + 100});
-        backgroundLayer->addChild(titleLabel);
+        mainLayer->addChild(titleLabel);
 
-        // Create inner execution interaction menu interface layer
+        // Initialize user interaction menu container interface
         auto subMenu = CCMenu::create();
         subMenu->setPosition({0, 0});
-        backgroundLayer->addChild(subMenu);
+        mainLayer->addChild(subMenu);
 
-        // Standard exit interaction close button configuration sequence
+        // Standard close popup window option asset link
         auto closeSprite = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
         auto closeButton = CCMenuItemSpriteExtra::create(
             closeSprite,
             this,
             menu_selector(MyOptimizationMenu::onClose)
         );
-        closeButton->setPosition({15, 225});
+        closeButton->setPosition({(winSize.width / 2) - 145, (winSize.height / 2) + 105});
         subMenu->addChild(closeButton);
 
         this->setTouchEnabled(true);
@@ -65,13 +66,12 @@ public:
     }
     
     void show() {
-        // Natively append structural interface layout display instance onto the running scene grid
         CCDirector::sharedDirector()->getRunningScene()->addChild(this, 100);
     }
 };
 
 // ============================================================================
-// 2. PLAYLAYER HOOK (Defining a custom class name for proper menu scope resolution)
+// 2. PLAYLAYER HOOK (Injecting the dynamic interaction layout button)
 // ============================================================================
 class $modify(MyPlayLayer, PlayLayer) {
     void onMyMenuButton(CCObject* sender) {
