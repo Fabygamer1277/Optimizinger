@@ -4,15 +4,15 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Inheriting from Geode Popup base class)
+// 1. UI MENU DEFINITION (Inheriting from the correct lowercase geode namespace)
 // ============================================================================
-class MyOptimizationMenu : public Geode::Popup<> {
+class MyOptimizationMenu : public geode::Popup<> {
 protected:
     bool setup() override {
-        // Set the window title centered at the top
+        // Set the window title centered at the top natively
         this->setTitle("FPS/TPS");
         
-        // The popup content layout goes here later. It is currently empty.
+        // This is the empty base container for testing
         return true;
     }
 
@@ -30,10 +30,10 @@ public:
 };
 
 // ============================================================================
-// 2. PLAYLAYER HOOK (To inject the custom interaction button)
+// 2. PLAYLAYER HOOK (Defining a custom class name for proper menu scope resolution)
 // ============================================================================
-class $modify(PlayLayer) {
-    // Declare the callback action function first so the compiler registers it
+class $modify(MyPlayLayer, PlayLayer) {
+    // Declare the interactive button callback action inside the modified scope
     void onMyMenuButton(CCObject* sender) {
         auto menu = MyOptimizationMenu::create();
         menu->show();
@@ -42,29 +42,27 @@ class $modify(PlayLayer) {
     bool init(GJGameLevel* level, bool useReplay, bool dontRunActions) {
         if (!PlayLayer::init(level, useReplay, dontRunActions)) return false;
 
-        // Retrieve the native top-left UI button menu container
+        // Retrieve the standard top-left UI menu layer layout identifier
         auto uiMenu = this->getChildByID("ui-menu");
         if (!uiMenu) {
-            // Fallback layout initialization if the ID wrapper fails
+            // Backup coordinates fallback configuration structure
             uiMenu = CCMenu::create();
             uiMenu->setPosition({20, CCDirector::sharedDirector()->getWinSize().height - 60});
             this->addChild(uiMenu);
         }
 
-        // Use a built-in green circle add sprite frame texture asset
+        // Create the green plus button frame from the native game spritesheet
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
-        // Link the button element instance execution callback to our action trigger
+        // Target the custom MyPlayLayer scope handler method for the action selector
         auto myButton = CCMenuItemSpriteExtra::create(
             buttonSprite,
             this,
-            menu_selector(PlayLayer::onMyMenuButton)
+            menu_selector(MyPlayLayer::onMyMenuButton)
         );
 
-        // Assign a distinct unique node identifier reference
         myButton->setID("fps-optimizer-button");
         
-        // Target append node onto layout hierarchy array and update formatting
         uiMenu->addChild(myButton);
         uiMenu->updateLayout();
 
