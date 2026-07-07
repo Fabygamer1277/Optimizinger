@@ -67,7 +67,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Inyección con Corrección de Desalineación en X)
+// 2. PAUSEMENU HOOK (Calibración Fina de Alineación)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -89,10 +89,10 @@ class $modify(MyPauseLayer, PauseLayer) {
             leftMenu->addChild(myButton);
             leftMenu->updateLayout();
 
-            // AJUSTE DE ALINEACIÓN: Despegamos el botón del borde de la pantalla.
-            // Al sumarle un valor positivo a X, el botón se mueve a la derecha,
-            // cuadrando simétricamente en el mismo eje vertical que el Death Tracker.
-            myButton->setPositionX(myButton->getPositionX() + 6.0f);
+            // AJUSTE FINO MILLIMÉTRICO:
+            // Como en el "antes" (tu segunda foto) estaba casi perfecto pero rozaba un pelín,
+            // solo le sumamos 1.5 unidades a la derecha para centrarlo milimétricamente con el Tracker.
+            myButton->setPositionX(myButton->getPositionX() + 1.5f);
         } else {
             auto winSize = CCDirector::sharedDirector()->getWinSize();
             auto fallbackMenu = CCMenu::create();
