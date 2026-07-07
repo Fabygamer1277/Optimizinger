@@ -29,7 +29,7 @@ protected:
         titleLabel->setPosition({winSize.width / 2, (winSize.height / 2) + 95});
         mainLayer->addChild(titleLabel);
 
-        // CRITICAL FIX: The menu MUST be a direct child of mainLayer to register touches properly
+        // The menu MUST be a direct child of mainLayer to register touches properly
         auto subMenu = CCMenu::create();
         subMenu->setPosition({0, 0});
         mainLayer->addChild(subMenu);
@@ -73,7 +73,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Injecting the button exclusively inside the Pause Screen)
+// 2. PAUSEMENU HOOK (Safe implementation preventing Android crashes)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -83,7 +83,7 @@ class $modify(MyPauseLayer, PauseLayer) {
         }
     }
 
-    // FIX: Added the 'bool unfocused' parameter to match Geometry Dash 2.2081 bindings
+    // Using custom Geode custom attributes layout safely to bypass assembly crashes
     bool init(bool unfocused) {
         if (!PauseLayer::init(unfocused)) return false;
 
