@@ -4,57 +4,77 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (FLAlertLayer standard base container layout)
+// 1. UI MENU DEFINITION (Strict Modal Touch Isolation for Android)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
     bool init() {
-        // Init standard size layer
         if (!FLAlertLayer::init(150)) return false;
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Create a standard CCLayer container to hold all visual elements
+        // Contenedor principal de la interfaz
         auto mainLayer = CCLayer::create();
         this->addChild(mainLayer);
         this->m_mainLayer = mainLayer;
 
-        // Create and add the background texture inside our main layer
+        // Fondo del recuadro café del menú
         auto backgroundLayer = CCScale9Sprite::create("GJ_square01.png");
         backgroundLayer->setContentSize({320, 240});
         backgroundLayer->setPosition(winSize / 2);
         mainLayer->addChild(backgroundLayer);
 
-        // Setup custom text title centered horizontally near the top of the box
+        // Título del menú
         auto titleLabel = CCLabelBMFont::create("FPS/TPS", "goldFont.fnt");
         titleLabel->setPosition({winSize.width / 2, (winSize.height / 2) + 95});
         mainLayer->addChild(titleLabel);
 
-        // The menu MUST be a direct child of mainLayer to register touches properly
+        // Menú exclusivo para los botones internos del panel
         auto subMenu = CCMenu::create();
         subMenu->setPosition({0, 0});
+        // Le damos prioridad máxima absoluta al contenedor de nuestros botones internos
+        subMenu->setTouchPriority(-501); 
         mainLayer->addChild(subMenu);
 
-        // Standard close popup window button using a precise top-left offset configuration
+        // Botón de cerrar (X)
         auto closeSprite = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
         auto closeButton = CCMenuItemSpriteExtra::create(
             closeSprite,
             this,
             menu_selector(MyOptimizationMenu::onClose)
         );
-        // Positions the 'X' exactly inside the top-left circle overlay area
         closeButton->setPosition({(winSize.width / 2) - 145, (winSize.height / 2) + 105});
         subMenu->addChild(closeButton);
 
-        // Enable touch and swallow events to prevent clicking background pause items
+        // Activamos los toques de forma estricta
         this->setTouchEnabled(true);
         this->setKeypadEnabled(true);
 
         return true;
     }
 
+    // Registramos este panel en el despachador de toques con prioridad de bloqueo crítico (-500)
+    void registerWithTouchDispatcher() override {
+        CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this, -500, true);
+    }
+
+    // BLOQUEO TOTAL TRASERO: Esta función intercepta cualquier toque en la pantalla
+    bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
+        // Retornar true le dice a Cocos2d-x que nosotros "nos adueñamos" del toque 
+        // y gracias al parámetro 'true' en el dispatcher, el evento se TRAGA y no pasa al fondo.
+        return true; 
+    }
+
+    void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
+        // Bloquea también los arrastres de dedos por la pantalla trasera
+    }
+
+    void ccTouchEnded(CCTouch* touch, CCEvent* event) override {
+        // Bloquea la liberación del toque trasero
+    }
+
     void onClose(CCObject* sender) {
-        // Safely remove the user interface overlay layout from the scene tree
+        // Al cerrar, liberamos la memoria y el juego vuelve a la normalidad automáticamente
         this->removeFromParentAndCleanup(true);
     }
 
@@ -69,17 +89,16 @@ public:
         return nullptr;
     }
     
-    // Forces the UI layout overlay to always render top-most over the game layers
     void show() {
         auto runningScene = CCDirector::sharedDirector()->getRunningScene();
         if (runningScene) {
-            runningScene->addChild(this, 500); // Super high Z-Order for the panel
+            runningScene->addChild(this, 1000); // Se dibuja al frente de absolutamente todo
         }
     }
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Safe implementation using customSetup for GD 2.2081)
+// 2. PAUSEMENU HOOK (Dynamic Positioning & Resize)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -90,30 +109,62 @@ class $modify(MyPauseLayer, PauseLayer) {
     }
 
     void customSetup() {
-        // Execute original game pause logic layout setup first
         PauseLayer::customSetup();
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Create container for the top-left corner button
-        auto topMenu = CCMenu::create();
-        topMenu->setPosition({30, winSize.height - 30});
+        // Buscamos el menú superior izquierdo nativo/modificado del juego
+        CCMenu* targetMenu = nullptr;
         
-        // FIX: Add the menu with a high Z-Order (100) so it renders OVER the pause layer assets
-        this->addChild(topMenu, 100);
+        CCObject* child;
+        CCARRAY_FOREACH(this->getChildren(), child) {
+            auto menu = dynamic_cast<CCMenu*>(child);
+            if (menu) {
+                if (menu->getPositionX() < 100 && menu->getPositionY() > (winSize.height - 100)) {
+                    targetMenu = menu;
+                    break;
+                }
+            }
+        }
 
-        // Standard green plus button sprite asset setup
+        auto topMenu = CCMenu::create();
+        this->addChild(topMenu, 150);
+
+        // Textura del más (+) verde
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
+        // Ajustamos la escala para igualar el tamaño de la tuerca nativa de configuración
+        buttonSprite->setScale(0.75f); 
+
         auto myButton = CCMenuItemSpriteExtra::create(
             buttonSprite,
             this,
             menu_selector(MyPauseLayer::onMyMenuButton)
         );
-
         myButton->setID("fps-optimizer-pause-button");
-        
         topMenu->addChild(myButton);
+
+        // Lógica de desplazamiento dinámico responsivo si hay otro mod en la esquina
+        if (targetMenu && targetMenu->getChildrenCount() > 0) {
+            float bottomOffset = winSize.height - 30;
+            
+            CCObject* btnChild;
+            CCARRAY_FOREACH(targetMenu->getChildren(), btnChild) {
+                auto node = dynamic_cast<CCNode*>(btnChild);
+                if (node) {
+                    float nodeBottom = targetMenu->getPositionY() + node->getPositionY() - (node->getContentSize().height / 2);
+                    if (nodeBottom < bottomOffset) {
+                        bottomOffset = nodeBottom;
+                    }
+                }
+            }
+            // Coloca el botón abajo del mod existente con un margen estético
+            topMenu->setPosition({30, bottomOffset - 20});
+        } else {
+            // Posición original limpia por defecto si la esquina está libre
+            topMenu->setPosition({30, winSize.height - 30});
+        }
+
         topMenu->updateLayout();
     }
 };
