@@ -1,30 +1,32 @@
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
-#include <Geode/ui/InputNode.hpp>
+#include <Geode/ui/TextInput.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
 using namespace geode::prelude;
 
+// Variable global para controlar los TPS
 static float g_targetTPS = 60.0f;
 
 // ============================================================================
-// POPUP CORRECTO
+// CLASE DEL MENU (POPUP)
 // ============================================================================
 class MyOptimizationMenu : public Popup<> {
 protected:
-    InputNode* m_input;
+    TextInput* m_input;
 
     bool setup() override {
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         this->setTitle("Configuracion de TPS");
 
-        // InputNode se crea correctamente usando los parámetros de la UI de Geode
-        m_input = InputNode::create(100, "TPS", "bigFont.fnt");
+        // Crear el campo de texto (TextInput es el reemplazo moderno de InputNode)
+        m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
         m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
-        this->m_buttonMenu->addChild(m_input); // Añadimos al menu del popup
+        this->m_buttonMenu->addChild(m_input);
 
+        // Boton de guardar
         auto saveBtn = CCMenuItemSpriteExtra::create(
             ButtonSprite::create("Guardar"), this, menu_selector(MyOptimizationMenu::onSave));
         saveBtn->setPosition({0, -60});
@@ -35,11 +37,15 @@ protected:
 
     void onSave(CCObject*) {
         std::string raw = m_input->getString();
-        int val = std::stoi(raw.empty() ? "60" : raw);
-        if (val > 1 && val < 9999) {
-            Mod::get()->setSavedValue<int>("tps-val", val);
-            g_targetTPS = (float)val;
-            Notification::create("TPS fijado a: " + std::to_string(val))->show();
+        try {
+            int val = std::stoi(raw.empty() ? "60" : raw);
+            if (val > 1 && val < 9999) {
+                Mod::get()->setSavedValue<int>("tps-val", val);
+                g_targetTPS = (float)val;
+                Notification::create("TPS fijado a: " + std::to_string(val))->show();
+            }
+        } catch (...) {
+            Notification::create("Valor invalido")->show();
         }
     }
 
@@ -56,21 +62,27 @@ public:
 };
 
 // ============================================================================
-// LÓGICA FÍSICA
+// LÓGICA DE JUEGO (HOOKS)
 // ============================================================================
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
+        // Ajuste de los TPS en el motor de juego
         PlayLayer::update(1.0f / g_targetTPS);
     }
 };
 
 class $modify(MyPauseLayer, PauseLayer) {
-    void onMyMenuButton(CCObject*) { MyOptimizationMenu::create()->show(); }
+    void onMyMenuButton(CCObject*) { 
+        MyOptimizationMenu::create()->show(); 
+    }
 
     void customSetup() {
         PauseLayer::customSetup();
+        
+        // Cargar valor guardado
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps-val", 60);
 
+        // Crear boton para abrir el menu en la pausa
         auto myMenu = CCMenu::create();
         myMenu->setPosition({45.0f, CCDirector::sharedDirector()->getWinSize().height - 75.0f});
         this->addChild(myMenu, 100);
