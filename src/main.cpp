@@ -83,8 +83,9 @@ class $modify(MyPauseLayer, PauseLayer) {
         }
     }
 
-    bool init() {
-        if (!PauseLayer::init()) return false;
+    // FIX: Added the 'bool unfocused' parameter to match Geometry Dash 2.2081 bindings
+    bool init(bool unfocused) {
+        if (!PauseLayer::init(unfocused)) return false;
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
