@@ -4,7 +4,7 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Panel compacto con aislamiento táctil)
+// CLASE DEL MENÚ EMERGENTE
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
@@ -67,7 +67,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Calibración Fina de Alineación)
+// HOOK DE PAUSELAYER (Código completo)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -78,28 +78,25 @@ class $modify(MyPauseLayer, PauseLayer) {
     void customSetup() {
         PauseLayer::customSetup();
 
+        // Creamos un menú propio fuera del layout automático de Geode
+        auto myMenu = CCMenu::create();
+        myMenu->setID("fps-optimizer-manual-menu");
+        
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        
+        // POSICIÓN: Aquí ajustas el número '45.0f' para alinear con las líneas rojas
+        myMenu->setPosition({45.0f, winSize.height - 75.0f});
+        this->addChild(myMenu, 100);
+
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         buttonSprite->setScale(0.75f); 
 
-        auto myButton = CCMenuItemSpriteExtra::create(buttonSprite, this, menu_selector(MyPauseLayer::onMyMenuButton));
-        myButton->setID("fps-optimizer-pause-button");
-
-        auto leftMenu = this->getChildByID("left-menu");
-        if (leftMenu) {
-            leftMenu->addChild(myButton);
-            leftMenu->updateLayout();
-
-            // AJUSTE FINO MILLIMÉTRICO:
-            // Como en el "antes" (tu segunda foto) estaba casi perfecto pero rozaba un pelín,
-            // solo le sumamos 1.5 unidades a la derecha para centrarlo milimétricamente con el Tracker.
-            myButton->setPositionX(myButton->getPositionX() + 1.5f);
-        } else {
-            auto winSize = CCDirector::sharedDirector()->getWinSize();
-            auto fallbackMenu = CCMenu::create();
-            fallbackMenu->setPosition({42.0f, winSize.height - 75.0f}); 
-            this->addChild(fallbackMenu, 150);
-            fallbackMenu->addChild(myButton);
-            fallbackMenu->updateLayout();
-        }
+        auto myButton = CCMenuItemSpriteExtra::create(
+            buttonSprite, 
+            this, 
+            menu_selector(MyPauseLayer::onMyMenuButton)
+        );
+        
+        myMenu->addChild(myButton);
     }
 };
