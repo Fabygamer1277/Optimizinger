@@ -73,7 +73,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Safe implementation preventing Android crashes)
+// 2. PAUSEMENU HOOK (Safe implementation using customSetup for GD 2.2081)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -83,18 +83,19 @@ class $modify(MyPauseLayer, PauseLayer) {
         }
     }
 
-    // Using custom Geode custom attributes layout safely to bypass assembly crashes
-    bool init(bool unfocused) {
-        if (!PauseLayer::init(unfocused)) return false;
+    // Usamos customSetup que es inmune a los problemas de firmas del init en la 2.2081
+    void customSetup() {
+        // Ejecutamos primero la configuración nativa del juego
+        PauseLayer::customSetup();
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Create a dedicated menu container anchored at the extreme top-left corner
+        // Crear contenedor para el botón arriba a la izquierda
         auto topMenu = CCMenu::create();
         topMenu->setPosition({30, winSize.height - 30});
         this->addChild(topMenu);
 
-        // Use the native green circle add icon asset texture layout
+        // Textura del botón del más (+) verde
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
         auto myButton = CCMenuItemSpriteExtra::create(
@@ -107,7 +108,5 @@ class $modify(MyPauseLayer, PauseLayer) {
         
         topMenu->addChild(myButton);
         topMenu->updateLayout();
-
-        return true;
     }
 };
