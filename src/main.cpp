@@ -4,7 +4,6 @@
 
 using namespace geode::prelude;
 
-// Variables globales para los valores
 static float g_targetTPS = 60.0f;
 static float g_targetFPS = 60.0f;
 static bool  g_cbfEnabled = false;
@@ -18,20 +17,20 @@ protected:
     CCMenuItemToggler* m_syncToggle;
 
     bool init() override {
+        // Usamos la firma correcta de 9 argumentos para FLAlertLayer
         if (!FLAlertLayer::init(nullptr, "Configuracion Optimizador", "", "Guardar", nullptr, 360.0f, false, 250.0f, 1.0f)) {
             return false;
         }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        auto center = winSize / 2;
+        // Corregido: Obtenemos el punto central manualmente usando width y height
+        auto center = CCPoint(winSize.width / 2, winSize.height / 2);
 
-        // Fondo
         auto bg = CCScale9Sprite::create("GJ_square01.png");
         bg->setContentSize({340.0f, 230.0f});
         bg->setPosition(center);
         m_mainLayer->addChild(bg, -1);
 
-        // Inputs
         m_tpsInput = TextInput::create(100.0f, "TPS");
         m_tpsInput->setPosition({center.x, center.y + 60});
         m_tpsInput->setString(std::to_string((int)g_targetTPS));
@@ -42,11 +41,11 @@ protected:
         m_fpsInput->setString(std::to_string((int)g_targetFPS));
         m_mainLayer->addChild(m_fpsInput);
 
-        // Toggles (Checkboxes)
         auto menu = CCMenu::create();
         menu->setPosition({0, 0});
         m_mainLayer->addChild(menu);
 
+        // Usar los frames correctos para toggles (puedes cambiarlos por los tuyos si ya los tienes en resources)
         m_cbfToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
         m_cbfToggle->setPosition({center.x + 80, center.y - 20});
         m_cbfToggle->toggle(g_cbfEnabled);
@@ -57,7 +56,6 @@ protected:
         m_syncToggle->toggle(g_syncEnabled);
         menu->addChild(m_syncToggle);
 
-        // Etiquetas para los Toggles
         auto cbfLabel = CCLabelBMFont::create("Click Between Frames", "bigFont.fnt");
         cbfLabel->setScale(0.4f);
         cbfLabel->setPosition({center.x - 40, center.y - 20});
@@ -95,8 +93,21 @@ protected:
         this->setKeypadEnabled(false);
         this->removeFromParent();
     }
+
+public:
+    // Corregido: Definir el create correctamente para FLAlertLayer
+    static MyOptimizationMenu* create() {
+        auto ret = new MyOptimizationMenu();
+        if (ret && ret->init()) {
+            ret->autorelease();
+            return ret;
+        }
+        CC_SAFE_DELETE(ret);
+        return nullptr;
+    }
 };
 
+// Modificadores de capas
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
         float tps = g_syncEnabled ? g_targetFPS : g_targetTPS;
@@ -105,6 +116,10 @@ class $modify(MyPlayLayer, PlayLayer) {
 };
 
 class $modify(MyPauseLayer, PauseLayer) {
+    void onMyMenuButton(CCObject*) { 
+        MyOptimizationMenu::create()->show(); 
+    }
+
     void customSetup() {
         PauseLayer::customSetup();
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
@@ -121,5 +136,4 @@ class $modify(MyPauseLayer, PauseLayer) {
             this, menu_selector(MyPauseLayer::onMyMenuButton));
         menu->addChild(btn);
     }
-    void onMyMenuButton(CCObject*) { MyOptimizationMenu::create()->show(); }
 };
