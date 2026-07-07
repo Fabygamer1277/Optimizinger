@@ -9,6 +9,7 @@ using namespace geode::prelude;
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
     bool init() {
+        // Init standard size layer
         if (!FLAlertLayer::init(150)) return false;
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
@@ -45,6 +46,7 @@ protected:
         closeButton->setPosition({(winSize.width / 2) - 145, (winSize.height / 2) + 105});
         subMenu->addChild(closeButton);
 
+        // Enable touch and swallow events to prevent clicking background pause items
         this->setTouchEnabled(true);
         this->setKeypadEnabled(true);
 
@@ -67,8 +69,12 @@ public:
         return nullptr;
     }
     
+    // Forces the UI layout overlay to always render top-most over the game layers
     void show() {
-        CCDirector::sharedDirector()->getRunningScene()->addChild(this, 100);
+        auto runningScene = CCDirector::sharedDirector()->getRunningScene();
+        if (runningScene) {
+            runningScene->addChild(this, 500); // Super high Z-Order for the panel
+        }
     }
 };
 
@@ -83,19 +89,20 @@ class $modify(MyPauseLayer, PauseLayer) {
         }
     }
 
-    // Usamos customSetup que es inmune a los problemas de firmas del init en la 2.2081
     void customSetup() {
-        // Ejecutamos primero la configuración nativa del juego
+        // Execute original game pause logic layout setup first
         PauseLayer::customSetup();
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Crear contenedor para el botón arriba a la izquierda
+        // Create container for the top-left corner button
         auto topMenu = CCMenu::create();
         topMenu->setPosition({30, winSize.height - 30});
-        this->addChild(topMenu);
+        
+        // FIX: Add the menu with a high Z-Order (100) so it renders OVER the pause layer assets
+        this->addChild(topMenu, 100);
 
-        // Textura del botón del más (+) verde
+        // Standard green plus button sprite asset setup
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
         auto myButton = CCMenuItemSpriteExtra::create(
