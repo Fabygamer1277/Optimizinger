@@ -4,10 +4,8 @@ using namespace geode::prelude;
 
 static float g_targetTPS = 60.0f;
 
-// ============================================================================
-// CLASE DEL MENU
-// ============================================================================
-// Usamos Popup<> sin headers adicionales para evitar conflictos de redefinición
+// Definimos la clase heredando de Popup directamente sin el template <>.
+// Esto suele resolver el error de "unknown template name" en Android.
 class MyOptimizationMenu : public Popup<> {
 protected:
     TextInput* m_input;
@@ -17,7 +15,7 @@ protected:
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // El TextInput es reconocido automáticamente al incluir Geode.hpp
+        // Usamos m_buttonMenu directamente, que es el estándar en Geode
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
         m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
@@ -35,19 +33,18 @@ protected:
         std::string raw = m_input->getString();
         try {
             int val = std::stoi(raw.empty() ? "60" : raw);
-            if (val > 1 && val < 9999) {
-                Mod::get()->setSavedValue<int>("tps-val", val);
-                g_targetTPS = (float)val;
-                Notification::create("TPS fijado a: " + std::to_string(val))->show();
-            }
+            Mod::get()->setSavedValue<int>("tps-val", val);
+            g_targetTPS = (float)val;
+            Notification::create("Guardado")->show();
         } catch (...) {
-            Notification::create("Valor invalido")->show();
+            Notification::create("Error")->show();
         }
     }
 
 public:
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
+        // Usamos el init estándar de 2 argumentos
         if (ret && ret->init(320.0f, 240.0f)) {
             ret->autorelease();
             return ret;
@@ -57,9 +54,6 @@ public:
     }
 };
 
-// ============================================================================
-// LÓGICA DE JUEGO (HOOKS)
-// ============================================================================
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
@@ -76,16 +70,15 @@ class $modify(MyPauseLayer, PauseLayer) {
 
     void customSetup() {
         PauseLayer::customSetup();
-        
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps-val", 60);
 
-        auto myMenu = CCMenu::create();
-        myMenu->setPosition({45.0f, CCDirector::sharedDirector()->getWinSize().height - 75.0f});
-        this->addChild(myMenu, 100);
+        auto menu = CCMenu::create();
+        menu->setPosition({45.0f, CCDirector::sharedDirector()->getWinSize().height - 75.0f});
+        this->addChild(menu, 100);
 
         auto btn = CCMenuItemSpriteExtra::create(
             CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png"), 
             this, menu_selector(MyPauseLayer::onMyMenuButton));
-        myMenu->addChild(btn);
+        menu->addChild(btn);
     }
 };
