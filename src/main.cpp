@@ -4,7 +4,7 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Panel de optimización con aislamiento táctil)
+// 1. UI MENU DEFINITION (Panel de optimización con aislamiento táctil completo)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
@@ -37,19 +37,4 @@ protected:
 
         // Botón de cerrar (X)
         auto closeSprite = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
-        auto closeButton = CCMenuItemSpriteExtra::create(
-            closeSprite,
-            this,
-            menu_selector(MyOptimizationMenu::onClose)
-        );
-        closeButton->setPosition({(winSize.width / 2) - 145, (winSize.height / 2) + 105});
-        subMenu->addChild(closeButton);
-
-        // Activamos los toques de forma estricta
-        this->setTouchEnabled(true);
-        this->setKeypadEnabled(true);
-
-        return true;
-    }
-
-    // Registramos
+        auto closeButton
