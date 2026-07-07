@@ -5,18 +5,19 @@ using namespace geode::prelude;
 static float g_targetTPS = 60.0f;
 
 // ============================================================================
-// CLASE DEL MENU (POPUP)
+// CLASE DEL MENU
 // ============================================================================
+// Usamos Popup<> sin headers adicionales para evitar conflictos de redefinición
 class MyOptimizationMenu : public Popup<> {
 protected:
     TextInput* m_input;
 
     bool setup() override {
-        // En lugar de m_mainLayer, usamos el método heredado de Popup<>
         this->setTitle("Configuracion de TPS");
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
+        // El TextInput es reconocido automáticamente al incluir Geode.hpp
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
         m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
