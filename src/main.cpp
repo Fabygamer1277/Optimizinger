@@ -8,7 +8,7 @@ using namespace geode::prelude;
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
-    bool init() {
+    bool init() override {
         if (!FLAlertLayer::init(150)) return false;
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
@@ -32,8 +32,7 @@ protected:
         // Menú exclusivo para los botones internos del panel
         auto subMenu = CCMenu::create();
         subMenu->setPosition({0, 0});
-        // Le damos prioridad máxima absoluta al contenedor de nuestros botones internos
-        subMenu->setTouchPriority(-501); 
+        subMenu->setTouchPriority(-501); // Prioridad ultra alta sobre el escudo
         mainLayer->addChild(subMenu);
 
         // Botón de cerrar (X)
@@ -58,23 +57,15 @@ protected:
         CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this, -500, true);
     }
 
-    // BLOQUEO TOTAL TRASERO: Esta función intercepta cualquier toque en la pantalla
+    // BLOQUEO TOTAL TRASERO: Absorbe cualquier interacción de fondo
     bool ccTouchBegan(CCTouch* touch, CCEvent* event) override {
-        // Retornar true le dice a Cocos2d-x que nosotros "nos adueñamos" del toque 
-        // y gracias al parámetro 'true' en el dispatcher, el evento se TRAGA y no pasa al fondo.
         return true; 
     }
 
-    void ccTouchMoved(CCTouch* touch, CCEvent* event) override {
-        // Bloquea también los arrastres de dedos por la pantalla trasera
-    }
-
-    void ccTouchEnded(CCTouch* touch, CCEvent* event) override {
-        // Bloquea la liberación del toque trasero
-    }
+    void ccTouchMoved(CCTouch* touch, CCEvent* event) override {}
+    void ccTouchEnded(CCTouch* touch, CCEvent* event) override {}
 
     void onClose(CCObject* sender) {
-        // Al cerrar, liberamos la memoria y el juego vuelve a la normalidad automáticamente
         this->removeFromParentAndCleanup(true);
     }
 
@@ -89,16 +80,16 @@ public:
         return nullptr;
     }
     
-    void show() {
+    void show() override {
         auto runningScene = CCDirector::sharedDirector()->getRunningScene();
         if (runningScene) {
-            runningScene->addChild(this, 1000); // Se dibuja al frente de absolutamente todo
+            runningScene->addChild(this, 1000); // Renderizado superior absoluto
         }
     }
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Dynamic Positioning & Resize)
+// 2. PAUSEMENU HOOK (Geode v5 Modern Dynamic Engine)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -112,14 +103,13 @@ class $modify(MyPauseLayer, PauseLayer) {
         PauseLayer::customSetup();
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-
-        // Buscamos el menú superior izquierdo nativo/modificado del juego
         CCMenu* targetMenu = nullptr;
         
-        CCObject* child;
-        CCARRAY_FOREACH(this->getChildren(), child) {
+        // CORRECCIÓN GEODE v5: Iteración moderna usando getChildrenExt()
+        for (auto child : this->getChildrenExt()) {
             auto menu = dynamic_cast<CCMenu*>(child);
             if (menu) {
+                // Filtramos si el menú está posicionado en la esquina superior izquierda
                 if (menu->getPositionX() < 100 && menu->getPositionY() > (winSize.height - 100)) {
                     targetMenu = menu;
                     break;
@@ -130,10 +120,10 @@ class $modify(MyPauseLayer, PauseLayer) {
         auto topMenu = CCMenu::create();
         this->addChild(topMenu, 150);
 
-        // Textura del más (+) verde
+        // Textura del botón verde (+)
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
-        // Ajustamos la escala para igualar el tamaño de la tuerca nativa de configuración
+        // REESCALADO: Tamaño de tuerca idéntico al botón de configuración nativo
         buttonSprite->setScale(0.75f); 
 
         auto myButton = CCMenuItemSpriteExtra::create(
@@ -144,24 +134,20 @@ class $modify(MyPauseLayer, PauseLayer) {
         myButton->setID("fps-optimizer-pause-button");
         topMenu->addChild(myButton);
 
-        // Lógica de desplazamiento dinámico responsivo si hay otro mod en la esquina
+        // LÓGICA DE ESQUIVE RESPONSIVO (Soporte Geode v5)
         if (targetMenu && targetMenu->getChildrenCount() > 0) {
             float bottomOffset = winSize.height - 30;
             
-            CCObject* btnChild;
-            CCARRAY_FOREACH(targetMenu->getChildren(), btnChild) {
-                auto node = dynamic_cast<CCNode*>(btnChild);
-                if (node) {
-                    float nodeBottom = targetMenu->getPositionY() + node->getPositionY() - (node->getContentSize().height / 2);
-                    if (nodeBottom < bottomOffset) {
-                        bottomOffset = nodeBottom;
-                    }
+            for (auto btnChild : targetMenu->getChildrenExt()) {
+                float nodeBottom = targetMenu->getPositionY() + btnChild->getPositionY() - (btnChild->getContentSize().height / 2);
+                if (nodeBottom < bottomOffset) {
+                    bottomOffset = nodeBottom;
                 }
             }
-            // Coloca el botón abajo del mod existente con un margen estético
+            // Desplazamiento dinámico seguro dejando margen estético
             topMenu->setPosition({30, bottomOffset - 20});
         } else {
-            // Posición original limpia por defecto si la esquina está libre
+            // Posición por defecto si la esquina superior izquierda está libre
             topMenu->setPosition({30, winSize.height - 30});
         }
 
