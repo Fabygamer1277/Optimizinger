@@ -4,6 +4,7 @@
 
 using namespace geode::prelude;
 
+// Variables globales para la configuración
 static float g_targetTPS = 60.0f;
 static float g_targetFPS = 60.0f;
 static bool  g_cbfEnabled = false;
@@ -17,13 +18,11 @@ protected:
     CCMenuItemToggler* m_syncToggle;
 
     bool init() override {
-        // Usamos la firma correcta de 9 argumentos para FLAlertLayer
         if (!FLAlertLayer::init(nullptr, "Configuracion Optimizador", "", "Guardar", nullptr, 360.0f, false, 250.0f, 1.0f)) {
             return false;
         }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        // Corregido: Obtenemos el punto central manualmente usando width y height
         auto center = CCPoint(winSize.width / 2, winSize.height / 2);
 
         auto bg = CCScale9Sprite::create("GJ_square01.png");
@@ -45,7 +44,6 @@ protected:
         menu->setPosition({0, 0});
         m_mainLayer->addChild(menu);
 
-        // Usar los frames correctos para toggles (puedes cambiarlos por los tuyos si ya los tienes en resources)
         m_cbfToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
         m_cbfToggle->setPosition({center.x + 80, center.y - 20});
         m_cbfToggle->toggle(g_cbfEnabled);
@@ -71,6 +69,11 @@ protected:
 
     void onToggle(CCObject*) {}
 
+    // Nota: El botón de "Guardar" del FLAlertLayer llama automáticamente a este método si es el botón principal
+    void keyBackClicked() override {
+        onBtn1(nullptr);
+    }
+
     void onBtn1(CCObject* sender) {
         try {
             int tps = std::stoi(m_tpsInput->getString());
@@ -90,12 +93,10 @@ protected:
         } catch (...) {
             Notification::create("Error en valores")->show();
         }
-        this->setKeypadEnabled(false);
         this->removeFromParent();
     }
 
 public:
-    // Corregido: Definir el create correctamente para FLAlertLayer
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
         if (ret && ret->init()) {
@@ -107,7 +108,6 @@ public:
     }
 };
 
-// Modificadores de capas
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
         float tps = g_syncEnabled ? g_targetFPS : g_targetTPS;
@@ -122,18 +122,28 @@ class $modify(MyPauseLayer, PauseLayer) {
 
     void customSetup() {
         PauseLayer::customSetup();
+        
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
         g_targetFPS = (float)Mod::get()->getSavedValue<int>("fps", 60);
         g_cbfEnabled = Mod::get()->getSavedValue<bool>("cbf", false);
         g_syncEnabled = Mod::get()->getSavedValue<bool>("sync", false);
 
         auto menu = CCMenu::create();
-        menu->setPosition({45.0f, CCDirector::sharedDirector()->getWinSize().height - 75.0f});
+        menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
+        // AQUÍ ESTÁ TU BOTÓN PERSONALIZADO
+        auto spr = CCSprite::create("ButtonForAll.png"_spr);
+        spr->setScale(0.15f); // Aplicando el escalado solicitado
+
         auto btn = CCMenuItemSpriteExtra::create(
-            CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png"), 
-            this, menu_selector(MyPauseLayer::onMyMenuButton));
+            spr, 
+            this, 
+            menu_selector(MyPauseLayer::onMyMenuButton)
+        );
+        
+        // Ajustamos la posición para que no se encime con los botones originales de GD
+        btn->setPosition({50.0f, 60.0f});
         menu->addChild(btn);
     }
 };
