@@ -1,10 +1,10 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/PlayLayer.hpp>
+#include <Geode/modify/PauseLayer.hpp>
 
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Using proper types to fix the assigning compilation error)
+// 1. UI MENU DEFINITION (FLAlertLayer standard base container layout)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
@@ -13,34 +13,35 @@ protected:
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Create a standard CCLayer container first to avoid type mismatch
+        // Create a standard CCLayer container to hold all visual elements
         auto mainLayer = CCLayer::create();
         this->addChild(mainLayer);
         this->m_mainLayer = mainLayer;
 
-        // Create and add the background texture inside our wrapper layer
+        // Create and add the background texture inside our main layer
         auto backgroundLayer = CCScale9Sprite::create("GJ_square01.png");
         backgroundLayer->setContentSize({320, 240});
         backgroundLayer->setPosition(winSize / 2);
         mainLayer->addChild(backgroundLayer);
 
-        // Setup custom text title positioned relative to the center screen
+        // Setup custom text title centered horizontally near the top of the box
         auto titleLabel = CCLabelBMFont::create("FPS/TPS", "goldFont.fnt");
-        titleLabel->setPosition({winSize.width / 2, (winSize.height / 2) + 100});
+        titleLabel->setPosition({winSize.width / 2, (winSize.height / 2) + 95});
         mainLayer->addChild(titleLabel);
 
-        // Initialize user interaction menu container interface
+        // CRITICAL FIX: The menu MUST be a direct child of mainLayer to register touches properly
         auto subMenu = CCMenu::create();
         subMenu->setPosition({0, 0});
         mainLayer->addChild(subMenu);
 
-        // Standard close popup window option asset link
+        // Standard close popup window button using a precise top-left offset configuration
         auto closeSprite = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
         auto closeButton = CCMenuItemSpriteExtra::create(
             closeSprite,
             this,
             menu_selector(MyOptimizationMenu::onClose)
         );
+        // Positions the 'X' exactly inside the top-left circle overlay area
         closeButton->setPosition({(winSize.width / 2) - 145, (winSize.height / 2) + 105});
         subMenu->addChild(closeButton);
 
@@ -51,6 +52,7 @@ protected:
     }
 
     void onClose(CCObject* sender) {
+        // Safely remove the user interface overlay layout from the scene tree
         this->removeFromParentAndCleanup(true);
     }
 
@@ -71,9 +73,9 @@ public:
 };
 
 // ============================================================================
-// 2. PLAYLAYER HOOK (Injecting the dynamic interaction layout button)
+// 2. PAUSEMENU HOOK (Injecting the button exclusively inside the Pause Screen)
 // ============================================================================
-class $modify(MyPlayLayer, PlayLayer) {
+class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
         auto menu = MyOptimizationMenu::create();
         if (menu) {
@@ -81,28 +83,29 @@ class $modify(MyPlayLayer, PlayLayer) {
         }
     }
 
-    bool init(GJGameLevel* level, bool useReplay, bool dontRunActions) {
-        if (!PlayLayer::init(level, useReplay, dontRunActions)) return false;
+    bool init() {
+        if (!PauseLayer::init()) return false;
 
-        auto uiMenu = this->getChildByID("ui-menu");
-        if (!uiMenu) {
-            uiMenu = CCMenu::create();
-            uiMenu->setPosition({20, CCDirector::sharedDirector()->getWinSize().height - 60});
-            this->addChild(uiMenu);
-        }
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
 
+        // Create a dedicated menu container anchored at the extreme top-left corner
+        auto topMenu = CCMenu::create();
+        topMenu->setPosition({30, winSize.height - 30});
+        this->addChild(topMenu);
+
+        // Use the native green circle add icon asset texture layout
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         
         auto myButton = CCMenuItemSpriteExtra::create(
             buttonSprite,
             this,
-            menu_selector(MyPlayLayer::onMyMenuButton)
+            menu_selector(MyPauseLayer::onMyMenuButton)
         );
 
-        myButton->setID("fps-optimizer-button");
+        myButton->setID("fps-optimizer-pause-button");
         
-        uiMenu->addChild(myButton);
-        uiMenu->updateLayout();
+        topMenu->addChild(myButton);
+        topMenu->updateLayout();
 
         return true;
     }
