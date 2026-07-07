@@ -4,78 +4,113 @@
 
 using namespace geode::prelude;
 
+// Variables globales para los valores
 static float g_targetTPS = 60.0f;
+static float g_targetFPS = 60.0f;
+static bool  g_cbfEnabled = false;
+static bool  g_syncEnabled = false;
 
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
-    TextInput* m_input;
+    TextInput* m_tpsInput;
+    TextInput* m_fpsInput;
+    CCMenuItemToggler* m_cbfToggle;
+    CCMenuItemToggler* m_syncToggle;
 
     bool init() override {
-        // Usamos la firma correcta de 9 argumentos para FLAlertLayer
-        if (!FLAlertLayer::init(nullptr, "Configuracion de TPS", "", "Guardar", nullptr, 320.0f, false, 200.0f, 1.0f)) {
+        if (!FLAlertLayer::init(nullptr, "Configuracion Optimizador", "", "Guardar", nullptr, 360.0f, false, 250.0f, 1.0f)) {
             return false;
         }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
+        auto center = winSize / 2;
 
-        // Fondo café clásico
+        // Fondo
         auto bg = CCScale9Sprite::create("GJ_square01.png");
-        bg->setContentSize({300.0f, 150.0f});
-        bg->setPosition({winSize.width/2, winSize.height/2});
+        bg->setContentSize({340.0f, 230.0f});
+        bg->setPosition(center);
         m_mainLayer->addChild(bg, -1);
 
-        // TextInput limpio
-        m_input = TextInput::create(150.0f, "TPS");
-        m_input->setPosition({winSize.width/2, winSize.height/2});
-        m_input->setString(std::to_string((int)g_targetTPS));
-        m_mainLayer->addChild(m_input);
+        // Inputs
+        m_tpsInput = TextInput::create(100.0f, "TPS");
+        m_tpsInput->setPosition({center.x, center.y + 60});
+        m_tpsInput->setString(std::to_string((int)g_targetTPS));
+        m_mainLayer->addChild(m_tpsInput);
+
+        m_fpsInput = TextInput::create(100.0f, "FPS");
+        m_fpsInput->setPosition({center.x, center.y + 20});
+        m_fpsInput->setString(std::to_string((int)g_targetFPS));
+        m_mainLayer->addChild(m_fpsInput);
+
+        // Toggles (Checkboxes)
+        auto menu = CCMenu::create();
+        menu->setPosition({0, 0});
+        m_mainLayer->addChild(menu);
+
+        m_cbfToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
+        m_cbfToggle->setPosition({center.x + 80, center.y - 20});
+        m_cbfToggle->toggle(g_cbfEnabled);
+        menu->addChild(m_cbfToggle);
+        
+        m_syncToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
+        m_syncToggle->setPosition({center.x + 80, center.y - 60});
+        m_syncToggle->toggle(g_syncEnabled);
+        menu->addChild(m_syncToggle);
+
+        // Etiquetas para los Toggles
+        auto cbfLabel = CCLabelBMFont::create("Click Between Frames", "bigFont.fnt");
+        cbfLabel->setScale(0.4f);
+        cbfLabel->setPosition({center.x - 40, center.y - 20});
+        m_mainLayer->addChild(cbfLabel);
+
+        auto syncLabel = CCLabelBMFont::create("Sync TPS with FPS", "bigFont.fnt");
+        syncLabel->setScale(0.4f);
+        syncLabel->setPosition({center.x - 40, center.y - 60});
+        m_mainLayer->addChild(syncLabel);
 
         return true;
     }
 
-    // Eliminamos 'override' porque FLAlertLayer no tiene este método como virtual
+    void onToggle(CCObject*) {}
+
     void onBtn1(CCObject* sender) {
-        std::string raw = m_input->getString();
         try {
-            int val = std::stoi(raw);
-            Mod::get()->setSavedValue<int>("tps-val", val);
-            g_targetTPS = (float)val;
-            Notification::create("TPS guardado: " + raw)->show();
+            int tps = std::stoi(m_tpsInput->getString());
+            int fps = std::stoi(m_fpsInput->getString());
+            
+            g_targetTPS = (float)tps;
+            g_targetFPS = (float)fps;
+            g_cbfEnabled = m_cbfToggle->isToggled();
+            g_syncEnabled = m_syncToggle->isToggled();
+
+            Mod::get()->setSavedValue<int>("tps", tps);
+            Mod::get()->setSavedValue<int>("fps", fps);
+            Mod::get()->setSavedValue<bool>("cbf", g_cbfEnabled);
+            Mod::get()->setSavedValue<bool>("sync", g_syncEnabled);
+            
+            Notification::create("Configuración guardada")->show();
         } catch (...) {
-            Notification::create("Error: Numero invalido")->show();
+            Notification::create("Error en valores")->show();
         }
-        
-        // Cerrar correctamente
         this->setKeypadEnabled(false);
         this->removeFromParent();
-    }
-
-public:
-    static MyOptimizationMenu* create() {
-        auto ret = new MyOptimizationMenu();
-        if (ret && ret->init()) {
-            ret->autorelease();
-            return ret;
-        }
-        CC_SAFE_DELETE(ret);
-        return nullptr;
     }
 };
 
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
-        PlayLayer::update(1.0f / g_targetTPS);
+        float tps = g_syncEnabled ? g_targetFPS : g_targetTPS;
+        PlayLayer::update(1.0f / tps);
     }
 };
 
 class $modify(MyPauseLayer, PauseLayer) {
-    void onMyMenuButton(CCObject*) { 
-        MyOptimizationMenu::create()->show(); 
-    }
-
     void customSetup() {
         PauseLayer::customSetup();
-        g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps-val", 60);
+        g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
+        g_targetFPS = (float)Mod::get()->getSavedValue<int>("fps", 60);
+        g_cbfEnabled = Mod::get()->getSavedValue<bool>("cbf", false);
+        g_syncEnabled = Mod::get()->getSavedValue<bool>("sync", false);
 
         auto menu = CCMenu::create();
         menu->setPosition({45.0f, CCDirector::sharedDirector()->getWinSize().height - 75.0f});
@@ -86,4 +121,5 @@ class $modify(MyPauseLayer, PauseLayer) {
             this, menu_selector(MyPauseLayer::onMyMenuButton));
         menu->addChild(btn);
     }
+    void onMyMenuButton(CCObject*) { MyOptimizationMenu::create()->show(); }
 };
