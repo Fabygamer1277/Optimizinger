@@ -1,19 +1,18 @@
 #include <Geode/Geode.hpp>
-#include <Geode/ui/Popup.hpp>
-#include <Geode/ui/TextInput.hpp>
 
 using namespace geode::prelude;
 
 static float g_targetTPS = 60.0f;
 
 // ============================================================================
-// CLASE DEL MENU (POPUP) - Estructura estándar
+// CLASE DEL MENU (POPUP)
 // ============================================================================
-class MyOptimizationMenu : public Popup<std::nullptr_t> {
+class MyOptimizationMenu : public Popup<> {
 protected:
     TextInput* m_input;
 
-    bool setup(std::nullptr_t) override {
+    bool setup() override {
+        // En lugar de m_mainLayer, usamos el método heredado de Popup<>
         this->setTitle("Configuracion de TPS");
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
@@ -21,15 +20,12 @@ protected:
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
         m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
-        this->m_mainLayer->addChild(m_input);
+        this->m_buttonMenu->addChild(m_input);
 
         auto saveBtn = CCMenuItemSpriteExtra::create(
             ButtonSprite::create("Guardar"), this, menu_selector(MyOptimizationMenu::onSave));
         saveBtn->setPosition({0, -60});
-        
-        auto menu = CCMenu::create();
-        menu->addChild(saveBtn);
-        this->m_mainLayer->addChild(menu);
+        this->m_buttonMenu->addChild(saveBtn);
 
         return true;
     }
@@ -51,7 +47,7 @@ protected:
 public:
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
-        if (ret && ret->init(320.0f, 240.0f, nullptr)) {
+        if (ret && ret->init(320.0f, 240.0f)) {
             ret->autorelease();
             return ret;
         }
@@ -61,7 +57,7 @@ public:
 };
 
 // ============================================================================
-// LÓGICA DE JUEGO
+// LÓGICA DE JUEGO (HOOKS)
 // ============================================================================
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
@@ -79,6 +75,7 @@ class $modify(MyPauseLayer, PauseLayer) {
 
     void customSetup() {
         PauseLayer::customSetup();
+        
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps-val", 60);
 
         auto myMenu = CCMenu::create();
