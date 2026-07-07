@@ -1,30 +1,36 @@
 #include <Geode/Geode.hpp>
+#include <Geode/ui/Popup.hpp>
+#include <Geode/ui/TextInput.hpp>
 
 using namespace geode::prelude;
 
 static float g_targetTPS = 60.0f;
 
-// Definimos la clase heredando de Popup directamente sin el template <>.
-// Esto suele resolver el error de "unknown template name" en Android.
-class MyOptimizationMenu : public Popup<> {
+// Cambiamos a 'public Popup' sin los <> para ver si el compilador lo acepta mejor
+class MyOptimizationMenu : public Popup {
 protected:
     TextInput* m_input;
 
+    // Cambiamos setup() para que no sea override si el compilador sigue dando problemas,
+    // pero intentaremos con override primero.
     bool setup() override {
         this->setTitle("Configuracion de TPS");
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
 
-        // Usamos m_buttonMenu directamente, que es el estándar en Geode
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
-        m_input->setString(std::to_string((int)Mod::get()->getSavedValue<int>("tps-val", 60)));
-        this->m_buttonMenu->addChild(m_input);
+        
+        // Usamos m_mainLayer->addChild directamente, es más seguro en 5.7+
+        this->m_mainLayer->addChild(m_input);
 
         auto saveBtn = CCMenuItemSpriteExtra::create(
             ButtonSprite::create("Guardar"), this, menu_selector(MyOptimizationMenu::onSave));
         saveBtn->setPosition({0, -60});
-        this->m_buttonMenu->addChild(saveBtn);
+        
+        auto menu = CCMenu::create();
+        menu->addChild(saveBtn);
+        this->m_mainLayer->addChild(menu);
 
         return true;
     }
@@ -44,7 +50,7 @@ protected:
 public:
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
-        // Usamos el init estándar de 2 argumentos
+        // Usamos init de Popup básico
         if (ret && ret->init(320.0f, 240.0f)) {
             ret->autorelease();
             return ret;
