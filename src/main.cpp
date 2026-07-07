@@ -1,43 +1,54 @@
 #include <Geode/Geode.hpp>
+#include <Geode/modify/PauseLayer.hpp>
+#include <Geode/modify/PlayLayer.hpp>
 
 using namespace geode::prelude;
 
+// Variable global para controlar el TPS
 static float g_targetTPS = 60.0f;
 
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
     TextInput* m_input;
 
-    // 1. Firma correcta del init con 9 argumentos
     bool init() override {
-        // Añadido el 1.0f final (textScale)
+        // Usamos una base de FLAlertLayer, pero personalizada
         if (!FLAlertLayer::init(nullptr, "Configuracion de TPS", "", "Guardar", nullptr, 320.0f, false, 200.0f, 1.0f)) {
             return false;
         }
 
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
-        m_input = TextInput::create(100, "TPS");
-        m_input->setPosition(winSize / 2);
+        // Crear el fondo café (GJ_square01 es el estándar en GD)
+        auto bg = CCScale9Sprite::create("GJ_square01.png");
+        bg->setContentSize({300.0f, 150.0f});
+        bg->setPosition({160.0f, 100.0f});
+        m_mainLayer->addChild(bg, -1);
+
+        // Crear el campo de entrada de texto
+        m_input = TextInput::create(150.0f, "TPS");
+        m_input->setPosition({160.0f, 100.0f});
+        m_input->setAllowedChars("0123456789"); // Importante: solo números
+        m_input->setString(std::to_string((int)g_targetTPS)); // Pone el valor actual
         m_mainLayer->addChild(m_input);
 
         return true;
     }
 
-    // 2. Quitamos 'override' porque FLAlertLayer no tiene onBtn1 virtual
-    void onBtn1(CCObject* sender) {
+    // El botón de guardar (onBtn1)
+    void onBtn1(CCObject* sender) override {
         std::string raw = m_input->getString();
-        try {
-            int val = std::stoi(raw.empty() ? "60" : raw);
-            Mod::get()->setSavedValue<int>("tps-val", val);
-            g_targetTPS = (float)val;
-            Notification::create("Guardado")->show();
-            
-            // 3. Forma correcta de cerrar: quitar de la pantalla
-            this->setKeypadEnabled(false);
-            this->removeFromParent();
-        } catch (...) {
-            Notification::create("Error: Numero invalido")->show();
+        if (!raw.empty()) {
+            try {
+                int val = std::stoi(raw);
+                Mod::get()->setSavedValue<int>("tps-val", val);
+                g_targetTPS = (float)val;
+                Notification::create("TPS guardado: " + raw)->show();
+            } catch (...) {
+                Notification::create("Error de numero")->show();
+            }
         }
+        // Cerrar correctamente
+        this->setKeypadEnabled(false);
+        this->removeFromParent();
     }
 
 public:
@@ -52,16 +63,14 @@ public:
     }
 };
 
-// El resto de tu código (Hooks de PauseLayer/PlayLayer) se mantiene igual
-#include <Geode/modify/PauseLayer.hpp>
-#include <Geode/modify/PlayLayer.hpp>
-
+// Hook para modificar el TPS en el juego
 class $modify(MyPlayLayer, PlayLayer) {
     void update(float dt) override {
         PlayLayer::update(1.0f / g_targetTPS);
     }
 };
 
+// Hook para poner el botón en el menú de pausa
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject*) { 
         MyOptimizationMenu::create()->show(); 
