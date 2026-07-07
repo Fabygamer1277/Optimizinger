@@ -4,7 +4,7 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// CLASE DEL MENÚ EMERGENTE
+// 1. UI MENU DEFINITION (Panel independiente)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
@@ -67,7 +67,7 @@ public:
 };
 
 // ============================================================================
-// HOOK DE PAUSELAYER (Código completo)
+// 2. PAUSEMENU HOOK (Lógica absoluta tipo Death Tracker)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -78,14 +78,19 @@ class $modify(MyPauseLayer, PauseLayer) {
     void customSetup() {
         PauseLayer::customSetup();
 
-        // Creamos un menú propio fuera del layout automático de Geode
+        // Creamos un menú flotante libre
         auto myMenu = CCMenu::create();
-        myMenu->setID("fps-optimizer-manual-menu");
+        myMenu->setID("fps-optimizer-floating-menu");
         
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         
-        // POSICIÓN: Aquí ajustas el número '45.0f' para alinear con las líneas rojas
+        // POSICIÓN ABSOLUTA: 
+        // 45.0f es la distancia desde el borde izquierdo.
+        // winSize.height - 75.0f es la altura fija desde arriba.
+        // Esto NO depende de ningún layout, así que se quedará donde tú digas.
         myMenu->setPosition({45.0f, winSize.height - 75.0f});
+        
+        // Lo añadimos directamente al PauseLayer, no al left-menu
         this->addChild(myMenu, 100);
 
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
