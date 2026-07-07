@@ -4,7 +4,7 @@
 using namespace geode::prelude;
 
 // ============================================================================
-// 1. UI MENU DEFINITION (Strict Modal Touch Isolation for Android)
+// 1. UI MENU DEFINITION (Panel de optimización con aislamiento táctil)
 // ============================================================================
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
@@ -89,7 +89,7 @@ public:
 };
 
 // ============================================================================
-// 2. PAUSEMENU HOOK (Geode v5 Modern Dynamic Engine)
+// 2. PAUSEMENU HOOK (Algoritmo de Esquive Dinámico Inteligente)
 // ============================================================================
 class $modify(MyPauseLayer, PauseLayer) {
     void onMyMenuButton(CCObject* sender) {
@@ -103,28 +103,14 @@ class $modify(MyPauseLayer, PauseLayer) {
         PauseLayer::customSetup();
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-        CCMenu* targetMenu = nullptr;
         
-        // CORRECCIÓN GEODE v5: Iteración moderna usando getChildrenExt()
-        for (auto child : this->getChildrenExt()) {
-            auto menu = dynamic_cast<CCMenu*>(child);
-            if (menu) {
-                // Filtramos si el menú está posicionado en la esquina superior izquierda
-                if (menu->getPositionX() < 100 && menu->getPositionY() > (winSize.height - 100)) {
-                    targetMenu = menu;
-                    break;
-                }
-            }
-        }
-
+        // Creamos nuestro contenedor propio para el botón (+)
         auto topMenu = CCMenu::create();
         this->addChild(topMenu, 150);
 
-        // Textura del botón verde (+)
+        // Textura y configuración del botón verde (+)
         auto buttonSprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
-        
-        // REESCALADO: Tamaño de tuerca idéntico al botón de configuración nativo
-        buttonSprite->setScale(0.75f); 
+        buttonSprite->setScale(0.75f); // Tamaño exacto al botón de configuración nativo
 
         auto myButton = CCMenuItemSpriteExtra::create(
             buttonSprite,
@@ -134,21 +120,43 @@ class $modify(MyPauseLayer, PauseLayer) {
         myButton->setID("fps-optimizer-pause-button");
         topMenu->addChild(myButton);
 
-        // LÓGICA DE ESQUIVE RESPONSIVO (Soporte Geode v5)
-        if (targetMenu && targetMenu->getChildrenCount() > 0) {
-            float bottomOffset = winSize.height - 30;
-            
-            for (auto btnChild : targetMenu->getChildrenExt()) {
-                float nodeBottom = targetMenu->getPositionY() + btnChild->getPositionY() - (btnChild->getContentSize().height / 2);
-                if (nodeBottom < bottomOffset) {
-                    bottomOffset = nodeBottom;
+        // --------------------------------------------------------------------
+        // DETECCIÓN DINÁMICA DE COMPETENCIA DE MENÚS (ESQUIVE)
+        // --------------------------------------------------------------------
+        float lowestYFound = winSize.height - 30.0f;
+        bool conflictDetected = false;
+
+        // Intento 1: Buscar directamente por el ID del menú del Death Tracker si existe
+        auto deathTrackerMenu = this->getChildByID("death-tracker-menu"); // ID común o similar
+        
+        // Intento 2: Escaneo de nodos en la esquina superior izquierda (Soporte Geode v5)
+        for (auto child : this->getChildrenExt()) {
+            auto menu = dynamic_cast<CCMenu*>(child);
+            if (menu && menu != topMenu) {
+                // Si el menú está ubicado en la franja izquierda superior
+                if (menu->getPositionX() < 120.0f && menu->getPositionY() > (winSize.height - 120.0f)) {
+                    
+                    // Analizamos la posición real más baja de sus elementos hijos
+                    for (auto btnChild : menu->getChildrenExt()) {
+                        float absoluteChildY = menu->getPositionY() + btnChild->getPositionY();
+                        float childBottomEdge = absoluteChildY - (btnChild->getContentSize().height * btnChild->getScale() / 2.0f);
+                        
+                        if (childBottomEdge < lowestYFound) {
+                            lowestYFound = childBottomEdge;
+                            conflictDetected = true;
+                        }
+                    }
                 }
             }
-            // Desplazamiento dinámico seguro dejando margen estético
-            topMenu->setPosition({30, bottomOffset - 20});
+        }
+
+        // Asignación de posición final responsiva
+        if (conflictDetected) {
+            // Si hay un mod arriba, nos colocamos 25 unidades abajo de su borde inferior
+            topMenu->setPosition({30.0f, lowestYFound - 25.0f});
         } else {
-            // Posición por defecto si la esquina superior izquierda está libre
-            topMenu->setPosition({30, winSize.height - 30});
+            // Si la esquina está completamente limpia, nos colocamos arriba de forma nativa
+            topMenu->setPosition({30.0f, winSize.height - 30.0f});
         }
 
         topMenu->updateLayout();
