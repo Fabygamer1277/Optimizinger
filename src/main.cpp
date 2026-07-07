@@ -4,21 +4,19 @@
 
 using namespace geode::prelude;
 
-// Variable global para controlar los TPS
 static float g_targetTPS = 60.0f;
 
 // ============================================================================
-// CLASE DEL MENU (POPUP)
+// CLASE DEL MENU (POPUP) - Estructura estándar
 // ============================================================================
-class MyOptimizationMenu : public Popup {
+class MyOptimizationMenu : public Popup<std::nullptr_t> {
 protected:
     TextInput* m_input;
 
-    bool setup() override {
-        // En un Popup de Geode, usamos el mainLayer para añadir hijos manualmente
-        // o nos aseguramos de que el template esté bien configurado.
-        auto winSize = CCDirector::sharedDirector()->getWinSize();
+    bool setup(std::nullptr_t) override {
         this->setTitle("Configuracion de TPS");
+
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
 
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
@@ -53,7 +51,7 @@ protected:
 public:
     static MyOptimizationMenu* create() {
         auto ret = new MyOptimizationMenu();
-        if (ret && ret->initAnchored(320.0f, 240.0f)) {
+        if (ret && ret->init(320.0f, 240.0f, nullptr)) {
             ret->autorelease();
             return ret;
         }
@@ -63,7 +61,7 @@ public:
 };
 
 // ============================================================================
-// LÓGICA DE JUEGO (HOOKS)
+// LÓGICA DE JUEGO
 // ============================================================================
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
@@ -81,7 +79,6 @@ class $modify(MyPauseLayer, PauseLayer) {
 
     void customSetup() {
         PauseLayer::customSetup();
-        
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps-val", 60);
 
         auto myMenu = CCMenu::create();
