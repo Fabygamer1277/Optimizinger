@@ -2,22 +2,20 @@
 
 using namespace geode::prelude;
 
-// 1. Declaración global para que sea accesible en todo el archivo
 static float g_targetTPS = 60.0f;
 
 class MyOptimizationMenu : public FLAlertLayer {
 protected:
     TextInput* m_input;
 
-    // 2. Usamos el init que requiere los parámetros obligatorios
+    // 1. Firma correcta del init con 9 argumentos
     bool init() override {
-        // FLAlertLayer::init(delegate, title, desc, btn1, btn2, width, scroll, height)
-        if (!FLAlertLayer::init(nullptr, "Configuracion de TPS", "", "Guardar", nullptr, 320.0f, false, 200.0f)) {
+        // Añadido el 1.0f final (textScale)
+        if (!FLAlertLayer::init(nullptr, "Configuracion de TPS", "", "Guardar", nullptr, 320.0f, false, 200.0f, 1.0f)) {
             return false;
         }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
-
         m_input = TextInput::create(100, "TPS");
         m_input->setPosition(winSize / 2);
         m_mainLayer->addChild(m_input);
@@ -25,15 +23,18 @@ protected:
         return true;
     }
 
-    // Sobrescribimos el botón para capturar la acción
-    void onBtn1(CCObject* sender) override {
+    // 2. Quitamos 'override' porque FLAlertLayer no tiene onBtn1 virtual
+    void onBtn1(CCObject* sender) {
         std::string raw = m_input->getString();
         try {
             int val = std::stoi(raw.empty() ? "60" : raw);
             Mod::get()->setSavedValue<int>("tps-val", val);
             g_targetTPS = (float)val;
             Notification::create("Guardado")->show();
-            this->onClose(sender);
+            
+            // 3. Forma correcta de cerrar: quitar de la pantalla
+            this->setKeypadEnabled(false);
+            this->removeFromParent();
         } catch (...) {
             Notification::create("Error: Numero invalido")->show();
         }
@@ -51,6 +52,7 @@ public:
     }
 };
 
+// El resto de tu código (Hooks de PauseLayer/PlayLayer) se mantiene igual
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
