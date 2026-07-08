@@ -29,13 +29,13 @@ protected:
         bg->setScale(0.45f); 
         m_mainLayer->addChild(bg, -1);
 
-        // 2. TEXTO CON TU FUENTE CUSTOM (Configurada en el mod.json)
-        auto tpsLabel = CCLabelBMFont::create("Tps", "gothic-font"_fnt);
+        // 2. TEXTO CON TU FUENTE CUSTOM (Corregido sin el _fnt que daba error)
+        auto tpsLabel = CCLabelBMFont::create("Tps", "gothic-font.fnt");
         tpsLabel->setPosition({center.x - 100, center.y + 50});
         tpsLabel->setScale(0.8f);
         m_mainLayer->addChild(tpsLabel);
 
-        auto fpsLabel = CCLabelBMFont::create("Fps", "gothic-font"_fnt);
+        auto fpsLabel = CCLabelBMFont::create("Fps", "gothic-font.fnt");
         fpsLabel->setPosition({center.x - 100, center.y - 10});
         fpsLabel->setScale(0.8f);
         m_mainLayer->addChild(fpsLabel);
@@ -50,7 +50,7 @@ protected:
         m_tpsInput = TextInput::create(100.0f, "TPS");
         m_tpsInput->setPosition({center.x + 50, center.y + 50});
         m_tpsInput->setString(std::to_string((int)g_targetTPS));
-        m_tpsInput->setHideBackground(true); // Oculta la caja gris fea de Geode
+        m_tpsInput->setBorders(false); // Corregido: quita la caja gris fea de Geode
         m_mainLayer->addChild(m_tpsInput);
 
         // Casilla FPS
@@ -62,7 +62,7 @@ protected:
         m_fpsInput = TextInput::create(100.0f, "FPS");
         m_fpsInput->setPosition({center.x + 50, center.y - 10});
         m_fpsInput->setString(std::to_string((int)g_targetFPS));
-        m_fpsInput->setHideBackground(true);
+        m_fpsInput->setBorders(false); // Corregido: quita la caja gris fea de Geode
         m_mainLayer->addChild(m_fpsInput);
 
         // Acomodar el botón "Guardar" abajo para que no rompa tu diseño
