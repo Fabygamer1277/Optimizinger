@@ -14,62 +14,67 @@ class MyOptimizationMenu : public FLAlertLayer {
 protected:
     TextInput* m_tpsInput;
     TextInput* m_fpsInput;
-    CCMenuItemToggler* m_cbfToggle;
-    CCMenuItemToggler* m_syncToggle;
 
     bool init() override {
-        if (!FLAlertLayer::init(nullptr, "Configuracion Optimizador", "", "Guardar", nullptr, 360.0f, false, 250.0f, 1.0f)) {
+        // Inicializamos la capa base sin fondo por defecto para usar tu textura morada
+        if (!FLAlertLayer::init(nullptr, "", "", "Guardar", nullptr, 400.0f, false, 300.0f, 1.0f)) {
             return false;
         }
 
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         auto center = CCPoint(winSize.width / 2, winSize.height / 2);
 
-        auto bg = CCScale9Sprite::create("GJ_square01.png");
-        bg->setContentSize({340.0f, 230.0f});
+        // 1. FONDO PERSONALIZADO (Tu ventana morada)
+        auto bg = CCSprite::create("menu_purple.png"_spr);
         bg->setPosition(center);
+        // Ajustamos la escala para que quede perfecta en la pantalla del juego
+        bg->setScale(0.45f); 
         m_mainLayer->addChild(bg, -1);
 
+        // 2. TEXTO CON TU FUENTE (Usando la configurada en el mod.json)
+        auto tpsLabel = CCLabelBMFont::create("Tps", "gothic-font"_fnt);
+        tpsLabel->setPosition({center.x - 100, center.y + 50});
+        tpsLabel->setScale(0.8f);
+        m_mainLayer->addChild(tpsLabel);
+
+        auto fpsLabel = CCLabelBMFont::create("Fps", "gothic-font"_fnt);
+        fpsLabel->setPosition({center.x - 100, center.y - 10});
+        fpsLabel->setScale(0.8f);
+        m_mainLayer->addChild(fpsLabel);
+
+        // 3. CASILLAS DE ENTRADA CON TU TEXTURA AZUL (box_values.png)
+        // Casilla TPS
+        auto tpsBg = CCSprite::create("box_values.png"_spr);
+        tpsBg->setScale(0.18f); // Escalado para que los 900x300 queden perfectos
+        tpsBg->setPosition({center.x + 50, center.y + 50});
+        m_mainLayer->addChild(tpsBg);
+
         m_tpsInput = TextInput::create(100.0f, "TPS");
-        m_tpsInput->setPosition({center.x, center.y + 60});
+        m_tpsInput->setPosition({center.x + 50, center.y + 50});
         m_tpsInput->setString(std::to_string((int)g_targetTPS));
+        m_tpsInput->setHideBackground(true); // Oculta la caja fea por defecto de Geode
         m_mainLayer->addChild(m_tpsInput);
 
+        // Casilla FPS
+        auto fpsBg = CCSprite::create("box_values.png"_spr);
+        fpsBg->setScale(0.18f);
+        fpsBg->setPosition({center.x + 50, center.y - 10});
+        m_mainLayer->addChild(fpsBg);
+
         m_fpsInput = TextInput::create(100.0f, "FPS");
-        m_fpsInput->setPosition({center.x, center.y + 20});
+        m_fpsInput->setPosition({center.x + 50, center.y - 10});
         m_fpsInput->setString(std::to_string((int)g_targetFPS));
+        m_fpsInput->setHideBackground(true);
         m_mainLayer->addChild(m_fpsInput);
 
-        auto menu = CCMenu::create();
-        menu->setPosition({0, 0});
-        m_mainLayer->addChild(menu);
-
-        m_cbfToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
-        m_cbfToggle->setPosition({center.x + 80, center.y - 20});
-        m_cbfToggle->toggle(g_cbfEnabled);
-        menu->addChild(m_cbfToggle);
-        
-        m_syncToggle = CCMenuItemToggler::createWithStandardSprites(this, menu_selector(MyOptimizationMenu::onToggle), 0.8f);
-        m_syncToggle->setPosition({center.x + 80, center.y - 60});
-        m_syncToggle->toggle(g_syncEnabled);
-        menu->addChild(m_syncToggle);
-
-        auto cbfLabel = CCLabelBMFont::create("Click Between Frames", "bigFont.fnt");
-        cbfLabel->setScale(0.4f);
-        cbfLabel->setPosition({center.x - 40, center.y - 20});
-        m_mainLayer->addChild(cbfLabel);
-
-        auto syncLabel = CCLabelBMFont::create("Sync TPS with FPS", "bigFont.fnt");
-        syncLabel->setScale(0.4f);
-        syncLabel->setPosition({center.x - 40, center.y - 60});
-        m_mainLayer->addChild(syncLabel);
+        // Movemos el botón "Guardar" original abajo para que no estorbe tu diseño
+        if (auto buttonMenu = m_mainLayer->getChildByType<CCMenu>(0)) {
+            buttonMenu->setPosition({center.x, center.y - 100});
+        }
 
         return true;
     }
 
-    void onToggle(CCObject*) {}
-
-    // Nota: El botón de "Guardar" del FLAlertLayer llama automáticamente a este método si es el botón principal
     void keyBackClicked() override {
         onBtn1(nullptr);
     }
@@ -81,17 +86,13 @@ protected:
             
             g_targetTPS = (float)tps;
             g_targetFPS = (float)fps;
-            g_cbfEnabled = m_cbfToggle->isToggled();
-            g_syncEnabled = m_syncToggle->isToggled();
 
             Mod::get()->setSavedValue<int>("tps", tps);
             Mod::get()->setSavedValue<int>("fps", fps);
-            Mod::get()->setSavedValue<bool>("cbf", g_cbfEnabled);
-            Mod::get()->setSavedValue<bool>("sync", g_syncEnabled);
             
-            Notification::create("Configuración guardada")->show();
+            Notification::create("Configuración guardada", NotificationIcon::Success)->show();
         } catch (...) {
-            Notification::create("Error en valores")->show();
+            Notification::create("Error en valores", NotificationIcon::Error)->show();
         }
         this->removeFromParent();
     }
@@ -125,16 +126,14 @@ class $modify(MyPauseLayer, PauseLayer) {
         
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
         g_targetFPS = (float)Mod::get()->getSavedValue<int>("fps", 60);
-        g_cbfEnabled = Mod::get()->getSavedValue<bool>("cbf", false);
-        g_syncEnabled = Mod::get()->getSavedValue<bool>("sync", false);
 
         auto menu = CCMenu::create();
         menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
-        // AQUÍ ESTÁ TU BOTÓN PERSONALIZADO
-        auto spr = CCSprite::create("ButtonForAll.png"_spr);
-        spr->setScale(0.15f); // Aplicando el escalado solicitado
+        // 4. TU BOTÓN PERSONALIZADO UBICADO EXACTAMENTE COMO LA CAPTURA
+        auto spr = CCSprite::create("buttom_open.png"_spr);
+        spr->setScale(0.28f); // Ajustado para que se vea bien junto al cráneo
 
         auto btn = CCMenuItemSpriteExtra::create(
             spr, 
@@ -142,8 +141,10 @@ class $modify(MyPauseLayer, PauseLayer) {
             menu_selector(MyPauseLayer::onMyMenuButton)
         );
         
-        // Ajustamos la posición para que no se encime con los botones originales de GD
-        btn->setPosition({50.0f, 60.0f});
+        // Posicionamiento en la esquina superior izquierda, justo debajo del botón verde del cráneo
+        auto winSize = CCDirector::sharedDirector()->getWinSize();
+        btn->setPosition({35.0f, winSize.height - 75.0f});
+        
         menu->addChild(btn);
     }
 };
