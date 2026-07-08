@@ -1,7 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PauseLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
-#include "MyOptimizationMenu.hpp" // <--- Importante: Enlazamos con tu nuevo archivo separado
+#include "MyOptimizationMenu.hpp" // Enlazamos con tu archivo separado
 
 using namespace geode::prelude;
 
@@ -13,7 +13,7 @@ static bool  g_syncEnabled = false;
 // =================================================================
 // HOOK DE LA FÍSICA DEL JUEGO (PlayLayer)
 // =================================================================
-class $modify(MyPlayLayer, PlayLayer) {
+class $modify(PlayLayer) {
     void update(float dt) override {
         // Leemos los valores guardados en tiempo real por Geode al actualizar cada frame
         int savedTPS = Mod::get()->getSavedValue<int>("tps", 60);
@@ -27,9 +27,9 @@ class $modify(MyPlayLayer, PlayLayer) {
 // =================================================================
 // HOOK DE LA PANTALLA DE PAUSA (PauseLayer)
 // =================================================================
-class $modify(MyPauseLayer, PauseLayer) {
+class $modify(PauseLayer) {
     
-    // El Callback del botón modificado de forma segura con CCObject* para evitar crasheos
+    // Movido arriba de customSetup para que el compilador sepa que existe antes de ser llamado
     void onMyMenuButton(CCObject* sender) { 
         // Llamamos al método create() del menú que movimos a MyOptimizationMenu.cpp
         auto layer = MyOptimizationMenu::create();
@@ -57,7 +57,7 @@ class $modify(MyPauseLayer, PauseLayer) {
             auto btn = CCMenuItemSpriteExtra::create(
                 spr, 
                 this, 
-                menu_selector(MyPauseLayer::onMyMenuButton) // Apunta a nuestra función corregida
+                menu_selector(PauseLayer::onMyMenuButton) // CORREGIDO: Apunta directamente a PauseLayer
             );
             
             // Posicionamiento en la esquina superior izquierda
