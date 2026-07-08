@@ -7,7 +7,6 @@ using namespace geode::prelude;
 // Variables globales para la configuración
 static float g_targetTPS = 60.0f;
 static float g_targetFPS = 60.0f;
-static bool  g_cbfEnabled = false;
 static bool  g_syncEnabled = false;
 
 class MyOptimizationMenu : public FLAlertLayer {
@@ -27,11 +26,10 @@ protected:
         // 1. FONDO PERSONALIZADO (Tu ventana morada)
         auto bg = CCSprite::create("menu_purple.png"_spr);
         bg->setPosition(center);
-        // Ajustamos la escala para que quede perfecta en la pantalla del juego
         bg->setScale(0.45f); 
         m_mainLayer->addChild(bg, -1);
 
-        // 2. TEXTO CON TU FUENTE (Usando la configurada en el mod.json)
+        // 2. TEXTO CON TU FUENTE CUSTOM (Configurada en el mod.json)
         auto tpsLabel = CCLabelBMFont::create("Tps", "gothic-font"_fnt);
         tpsLabel->setPosition({center.x - 100, center.y + 50});
         tpsLabel->setScale(0.8f);
@@ -45,14 +43,14 @@ protected:
         // 3. CASILLAS DE ENTRADA CON TU TEXTURA AZUL (box_values.png)
         // Casilla TPS
         auto tpsBg = CCSprite::create("box_values.png"_spr);
-        tpsBg->setScale(0.18f); // Escalado para que los 900x300 queden perfectos
+        tpsBg->setScale(0.18f); 
         tpsBg->setPosition({center.x + 50, center.y + 50});
         m_mainLayer->addChild(tpsBg);
 
         m_tpsInput = TextInput::create(100.0f, "TPS");
         m_tpsInput->setPosition({center.x + 50, center.y + 50});
         m_tpsInput->setString(std::to_string((int)g_targetTPS));
-        m_tpsInput->setHideBackground(true); // Oculta la caja fea por defecto de Geode
+        m_tpsInput->setHideBackground(true); // Oculta la caja gris fea de Geode
         m_mainLayer->addChild(m_tpsInput);
 
         // Casilla FPS
@@ -67,12 +65,21 @@ protected:
         m_fpsInput->setHideBackground(true);
         m_mainLayer->addChild(m_fpsInput);
 
-        // Movemos el botón "Guardar" original abajo para que no estorbe tu diseño
+        // Acomodar el botón "Guardar" abajo para que no rompa tu diseño
         if (auto buttonMenu = m_mainLayer->getChildByType<CCMenu>(0)) {
             buttonMenu->setPosition({center.x, center.y - 100});
         }
 
+        // 4. BLINDAJE ANTI-CLICS FANTASMAS (Evita que el juego reciba toques de fondo)
+        this->setTouchEnabled(true);
+        this->setKeypadEnabled(true);
+
         return true;
+    }
+
+    // Registrar el menú con máxima prioridad de clics al entrar a escena
+    void registerWithTouchDispatcher() override {
+        CCDirector::sharedDirector()->getTouchDispatcher()->addTargetedDelegate(this, -128, true);
     }
 
     void keyBackClicked() override {
@@ -131,9 +138,9 @@ class $modify(MyPauseLayer, PauseLayer) {
         menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
-        // 4. TU BOTÓN PERSONALIZADO UBICADO EXACTAMENTE COMO LA CAPTURA
+        // 5. TU BOTÓN PERSONALIZADO (Ubicación exacta de tu mockup)
         auto spr = CCSprite::create("buttom_open.png"_spr);
-        spr->setScale(0.28f); // Ajustado para que se vea bien junto al cráneo
+        spr->setScale(0.28f); 
 
         auto btn = CCMenuItemSpriteExtra::create(
             spr, 
@@ -141,7 +148,7 @@ class $modify(MyPauseLayer, PauseLayer) {
             menu_selector(MyPauseLayer::onMyMenuButton)
         );
         
-        // Posicionamiento en la esquina superior izquierda, justo debajo del botón verde del cráneo
+        // Esquina superior izquierda, perfectamente debajo del Death Tracker
         auto winSize = CCDirector::sharedDirector()->getWinSize();
         btn->setPosition({35.0f, winSize.height - 75.0f});
         
