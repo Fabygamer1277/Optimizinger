@@ -4,7 +4,15 @@
 
 using namespace geode::prelude;
 
-class $modify(MenuLayer) {
+class $modify(MyMenuLayer, MenuLayer) {
+    // 1. Ponemos la función aquí arriba para que init() sepa que existe
+    void onOpenOptimizationMenu(cocos2d::CCObject* sender) {
+        auto menuLayer = MyOptimizationMenu::create();
+        if (menuLayer) {
+            menuLayer->show();
+        }
+    }
+
     bool init() {
         if (!MenuLayer::init()) return false;
 
@@ -18,7 +26,7 @@ class $modify(MenuLayer) {
                 auto myButton = CCMenuItemSpriteExtra::create(
                     mySprite,
                     this,
-                    menu_selector(MenuLayer::onOpenOptimizationMenu) // 🌟 CORREGIDO: Usamos MenuLayer
+                    menu_selector(MyMenuLayer::onOpenOptimizationMenu) // Usamos el nombre de nuestro contenedor
                 );
 
                 bottomMenu->addChild(myButton);
@@ -27,13 +35,5 @@ class $modify(MenuLayer) {
         }
 
         return true;
-    }
-
-    // Callback de la acción
-    void onOpenOptimizationMenu(cocos2d::CCObject* sender) {
-        auto menuLayer = MyOptimizationMenu::create();
-        if (menuLayer) {
-            menuLayer->show();
-        }
     }
 };
