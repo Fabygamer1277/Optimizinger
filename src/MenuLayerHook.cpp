@@ -10,7 +10,6 @@ class $modify(MenuLayer) {
 
         auto bottomMenu = this->getChildByID("bottom-menu");
         if (bottomMenu) {
-            // Cargamos la imagen verde redonda renombrada como buttom_open.png
             auto mySprite = CCSprite::create("buttom_open.png");
             
             if (mySprite) {
@@ -19,7 +18,7 @@ class $modify(MenuLayer) {
                 auto myButton = CCMenuItemSpriteExtra::create(
                     mySprite,
                     this,
-                    menu_selector(MenuLayerHook::onOpenOptimizationMenu)
+                    menu_selector(MenuLayer::onOpenOptimizationMenu) // 🌟 CORREGIDO: Usamos MenuLayer
                 );
 
                 bottomMenu->addChild(myButton);
@@ -30,10 +29,11 @@ class $modify(MenuLayer) {
         return true;
     }
 
+    // Callback de la acción
     void onOpenOptimizationMenu(cocos2d::CCObject* sender) {
         auto menuLayer = MyOptimizationMenu::create();
         if (menuLayer) {
-            menuLayer->show(); // Dispara tu ventana flotante personalizada
+            menuLayer->show();
         }
     }
 };
