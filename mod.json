@@ -9,6 +9,28 @@
     "id": "fabygamer1277.fps-optimizer",
     "name": "FPS Optimizer",
     "developer": "Fabygamer1277",
-    "description": "Mod para mejorar FPS",
-    "version": "1.0.0"
+    "description": "Bypass de física real y personalización visual con integración de CBF.",
+    "version": "1.0.0",
+    
+    "dependencies": [
+        {
+            "id": "theyareonit.click-between-frames",
+            "version": ">=1.0.0",
+            "importance": "required"
+        }
+    ],
+    
+    "resources": {
+        "sprites": [
+            "box_values.png",
+            "buttom_open.png",
+            "menu_purple.png"
+        ],
+        "fonts": {
+            "gothic-font": {
+                "path": "fonts/MontenegrinGothicOne-Regular.ttf",
+                "size": 32
+            }
+        }
+    }
 }
