@@ -26,8 +26,8 @@ endif()
 
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
-# Configura el mod de Geode y marca el CBF como externo para evitar fallos en GitHub Actions
+# Configura el mod de Geode y marca el CBF como externo usando solo su ID limpio
 setup_geode_mod(${PROJECT_NAME}
     EXTERNALS
-        theyareonit.click-between-frames:>=1.0.0
+        theyareonit.click-between-frames
 )
