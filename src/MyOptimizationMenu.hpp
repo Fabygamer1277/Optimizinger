@@ -1,16 +1,12 @@
 #pragma once
 #include <Geode/Geode.hpp>
+#include <Geode/ui/Popup.hpp> // <- ¡Esta era la que faltaba!
 
-// Heredamos de Geode::Popup para obtener estabilidad visual y el botón X nativo
 class MyOptimizationMenu : public geode::Popup<std::string const&> {
 protected:
     bool setup(std::string const& value) override;
 
 public:
-    // Macro de creación segura de Geode
-    static MyOptimizationMenu* create();
-    
-    // Callbacks para guardar los valores cuando se interactúe
-    void onSaveTPS(cocos2d::CCObject* sender);
-    void onSaveFPS(cocos2d::CCObject* sender);
+    static MyOptimizationMenu* create(std::string const& value);
+    void onClose(cocos2d::CCObject* sender);
 };
