@@ -25,16 +25,16 @@
             "description": "Ticks por segundo por defecto para las físicas.",
             "type": "int",
             "default": 60,
-            "min": 15,
-            "max": 1000
+            "min": 30,
+            "max": 2000
         },
         "fps": {
             "name": "Target FPS",
             "description": "Cuadros por segundo por defecto.",
             "type": "int",
             "default": 60,
-            "min": 15,
-            "max": 1000
+            "min": 60,
+            "max": 540
         }
     }
 }
