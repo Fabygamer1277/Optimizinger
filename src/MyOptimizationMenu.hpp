@@ -1,21 +1,16 @@
 #pragma once
 #include <Geode/Geode.hpp>
 
-using namespace geode::prelude;
-
-class MyOptimizationMenu : public FLAlertLayer, public TextInputDelegate {
+// Heredamos de Geode::Popup para obtener estabilidad visual y el botón X nativo
+class MyOptimizationMenu : public geode::Popup<std::string const&> {
 protected:
-    // Punteros para leer el texto que ingrese el usuario más tarde
-    CCTextInputNode* m_tpsInput;
-    CCTextInputNode* m_fpsInput;
+    bool setup(std::string const& value) override;
 
 public:
+    // Macro de creación segura de Geode
     static MyOptimizationMenu* create();
-    bool init() override;
     
-    // Delegado obligatorio para capturar y validar lo que se escribe en tiempo real
-    void textChanged(CCTextInputNode* input) override;
-
-    // Callbacks de los botones
-    void onClose(cocos2d::CCObject* sender);
+    // Callbacks para guardar los valores cuando se interactúe
+    void onSaveTPS(cocos2d::CCObject* sender);
+    void onSaveFPS(cocos2d::CCObject* sender);
 };
