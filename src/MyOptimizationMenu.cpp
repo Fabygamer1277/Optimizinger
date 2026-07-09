@@ -1,10 +1,9 @@
 #include "MyOptimizationMenu.hpp"
 
-using namespace geode::prelude;
-
-MyOptimizationMenu* MyOptimizationMenu::create() {
+MyOptimizationMenu* MyOptimizationMenu::create(std::string const& title) {
     auto ret = new MyOptimizationMenu();
-    if (ret && ret->initAnchored(380.f, 260.f)) { 
+    // initAnchored inicializa las dimensiones (380 de ancho, 260 de alto) y le pasa el título a la clase base
+    if (ret && ret->initAnchored(380.f, 260.f, title)) { 
         ret->autorelease();
         return ret;
     }
@@ -12,113 +11,47 @@ MyOptimizationMenu* MyOptimizationMenu::create() {
     return nullptr;
 }
 
-bool MyOptimizationMenu::setup() {
+bool MyOptimizationMenu::setup(std::string const& title) {
+    // El título se asigna automáticamente mediante la clase base geode::Popup,
+    // pero nos aseguramos de setearlo correctamente aquí:
+    this->setTitle(title);
+
+    // Ocultar el fondo por defecto si es necesario
     if (m_bgSprite) m_bgSprite->setVisible(false);
 
-    // Fondo morado personalizado
-    auto customBg = CCSprite::create("menu_purple.png"_spr);
+    // Crear un fondo personalizado adaptado a m_size
+    auto customBg = CCScale9Sprite::create("GJ_square01.png");
     if (customBg) {
         customBg->setContentSize(m_size);
         customBg->setPosition(m_size / 2);
         m_mainLayer->addChild(customBg, -1);
     }
 
-    this->setTitle("OPTIMIZER OPTIONS");
-
+    // Reposicionar el botón de cierre en la esquina superior izquierda usando m_size
     if (m_closeBtn) {
         m_closeBtn->setPosition({ -m_size.width / 2 + 20.f, m_size.height / 2 - 20.f });
     }
 
-    // --- SECCIÓN TPS ---
-    // CORREGIDO: Llamamos a tu fuente usando el ID del mod + el nombre que le diste en el json
-    auto tpsLabel = CCLabelBMFont::create("Target TPS:", "fabygamer1277.fps-optimizer/gothic-font.fnt");
+    // Etiqueta indicadora para el input de TPS
+    auto tpsLabel = CCLabelBMFont::create("TPS Limit:", "bigFont.fnt");
     if (tpsLabel) {
-        tpsLabel->setScale(0.50f); // Bajamos un pelín la escala por ser fuente gótica externa
         tpsLabel->setPosition({ m_size.width / 2 - 80.f, m_size.height / 2 + 40.f });
         m_mainLayer->addChild(tpsLabel);
     }
 
-    int currentTPS = Mod::get()->getSavedValue<int>("tps", 60);
-    // CORREGIDO: Aplicamos tu fuente gótica a la caja de texto
-    m_tpsInput = TextInput::create(120.f, "60", "fabygamer1277.fps-optimizer/gothic-font.fnt");
+    // Crear la caja de entrada de texto usando el TextInput de Geode
+    // Nota: Reemplaza "m_tpsInput" con tu variable miembro si la declaraste en el .hpp, 
+    // o déjala como una variable local/miembro según la tengas estructurada en tu mod.
+    auto m_tpsInput = TextInput::create(120.f, "60", "bigFont.fnt");
     if (m_tpsInput) {
-        m_tpsInput->setString(std::to_string(currentTPS));
-        m_tpsInput->setFilter(TextInputFilter::create(true, false)); 
-        m_tpsInput->setPosition({ m_size.width / 2 + 50.f, m_size.height / 2 + 40.f });
+        m_tpsInput->setPosition({ m_size.width / 2 + 40.f, m_size.height / 2 + 40.f });
         
-        if (auto bgInput = m_tpsInput->getBGSprite()) {
-            auto customBox = CCSprite::create("box_values.png"_spr);
-            if (customBox) {
-                customBox->setContentSize(bgInput->getContentSize());
-                customBox->setPosition(bgInput->getPosition());
-                bgInput->getParent()->addChild(customBox, bgInput->getZOrder());
-                bgInput->removeFromParent(); 
-            }
-        }
+        // SOLUCIÓN AL PASO 2: En lugar de usar TextInputFilter que no existe,
+        // le indicamos los únicos caracteres permitidos (solo números)
+        m_tpsInput->setAllowedChars("0123456789");
+        
         m_mainLayer->addChild(m_tpsInput);
     }
 
-    // --- SECCIÓN FPS ---
-    auto fpsLabel = CCLabelBMFont::create("Target FPS:", "fabygamer1277.fps-optimizer/gothic-font.fnt");
-    if (fpsLabel) {
-        fpsLabel->setScale(0.50f);
-        fpsLabel->setPosition({ m_size.width / 2 - 80.f, m_size.height / 2 - 10.f });
-        m_mainLayer->addChild(fpsLabel);
-    }
-
-    int currentFPS = Mod::get()->getSavedValue<int>("fps", 60);
-    m_fpsInput = TextInput::create(120.f, "60", "fabygamer1277.fps-optimizer/gothic-font.fnt");
-    if (m_fpsInput) {
-        m_fpsInput->setString(std::to_string(currentFPS));
-        m_fpsInput->setFilter(TextInputFilter::create(true, false));
-        m_fpsInput->setPosition({ m_size.width / 2 + 50.f, m_size.height / 2 - 10.f });
-        
-        if (auto bgInput = m_fpsInput->getBGSprite()) {
-            auto customBox = CCSprite::create("box_values.png"_spr);
-            if (customBox) {
-                customBox->setContentSize(bgInput->getContentSize());
-                customBox->setPosition(bgInput->getPosition());
-                bgInput->getParent()->addChild(customBox, bgInput->getZOrder());
-                bgInput->removeFromParent();
-            }
-        }
-        m_mainLayer->addChild(m_fpsInput);
-    }
-
-    // --- BOTÓN DE GUARDAR ---
-    auto btnSprite = ButtonSprite::create("Guardar", "fabygamer1277.fps-optimizer/gothic-font.fnt", "GJ_button_01.png");
-    auto saveBtn = CCMenuItemSpriteExtra::create(
-        btnSprite,
-        this,
-        menu_selector(MyOptimizationMenu::onSave)
-    );
-    
-    auto menuBtn = CCMenu::create();
-    if (menuBtn && saveBtn) {
-        saveBtn->setPosition({ 0, -m_size.height / 2 + 35.f });
-        menuBtn->setPosition({ m_size.width / 2, m_size.height / 2 });
-        menuBtn->addChild(saveBtn);
-        m_mainLayer->addChild(menuBtn);
-    }
-
     return true;
-}
-
-void MyOptimizationMenu::onSave(cocos2d::CCObject* sender) {
-    if (m_tpsInput && m_fpsInput) {
-        int tps = m_tpsInput->getString().length() > 0 ? std::stoi(m_tpsInput->getString()) : 60;
-        int fps = m_fpsInput->getString().length() > 0 ? std::stoi(m_fpsInput->getString()) : 60;
-
-        // Limites de seguridad basados en tu mod.json actual
-        if (tps < 30) tps = 30;
-        if (tps > 2000) tps = 2000;
-        if (fps < 60) fps = 60;
-        if (fps > 540) fps = 540;
-
-        Mod::get()->setSavedValue("tps", tps);
-        Mod::get()->setSavedValue("fps", fps);
-
-        FLAlertLayer::create("Guardado", "Configuración de rendimiento actualizada.", "OK")->show();
-        this->onClose(sender);
-    }
 }
