@@ -1,10 +1,13 @@
 #pragma once
-#include <Geode/Geode.hpp>
-#include <Geode/ui/Popup.hpp> // <-- ESENCIAL PARA GEODE 5.x
 
-class MyOptimizationMenu : public geode::Popup<std::string const&> {
+#include <Geode/Geode.hpp>
+#include <Geode/ui/Popup.hpp>
+
+using namespace geode::prelude;
+
+class MyOptimizationMenu : public geode::Popup<std::string> {
 protected:
-    bool setup(std::string const& value) override;
+    bool setup(std::string value) override;
 
 public:
     static MyOptimizationMenu* create(std::string const& value);
