@@ -25,16 +25,21 @@ class $modify(PlayLayer) {
 // =================================================================
 // HOOK DE LA PANTALLA DE PAUSA (PauseLayer)
 // =================================================================
-class $modify(MyPauseLayer, PauseLayer) { // Usamos dos argumentos para poder declarar métodos nuevos de forma segura enlazados
+class $modify(MyPauseLayer, PauseLayer) { // Usamos dos argumentos para declarar métodos nuevos de forma segura
     
     void onMyMenuButton(cocos2d::CCObject* sender) { 
-        auto layer = MyOptimizationMenu::create();
+        // Obtenemos el valor guardado para mostrárselo al usuario en el menú
+        int savedTPS = Mod::get()->getSavedValue<int>("tps", 60);
+        std::string tpsTexto = std::to_string(savedTPS) + " TPS";
+
+        // CORREGIDO: Ahora le pasamos el string requerido a la función create
+        auto layer = MyOptimizationMenu::create(tpsTexto);
         if (layer) {
             layer->show(); 
         }
     }
 
-    void customSetup() {
+    void customSetup() override { // Añadido override por buena práctica de Geode
         PauseLayer::customSetup();
         
         g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
