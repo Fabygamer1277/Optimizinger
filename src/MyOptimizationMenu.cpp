@@ -4,7 +4,7 @@ using namespace geode::prelude;
 
 MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     auto ret = new MyOptimizationMenu();
-    if (ret && ret->initAnchored(360.f, 240.f, value)) { // <- Asegúrate de pasar 'value' aquí
+    if (ret && ret->initAnchored(360.f, 240.f, value)) { 
         ret->autorelease();
         return ret;
     }
@@ -12,7 +12,8 @@ MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     return nullptr;
 }
 
-bool MyOptimizationMenu::setup(std::string const& value) {
+// Modificado: Ahora recibe 'std::string value' por valor para coincidir con el .hpp
+bool MyOptimizationMenu::setup(std::string value) {
     this->setTitle("FPS OPTIMIZER");
 
     if (m_bgSprite) {
