@@ -14,55 +14,75 @@ static bool  g_syncEnabled = false;
 // =================================================================
 class $modify(PlayLayer) {
     void update(float dt) override {
-        int savedTPS = Mod::get()->getSavedValue<int>("tps", 60);
-        int savedFPS = Mod::get()->getSavedValue<int>("fps", 60);
+        // Obtenemos los valores de forma segura evitando llamadas pesadas en el bucle principal
+        auto myMod = Mod::get();
+        if (!myMod) {
+            PlayLayer::update(dt);
+            return;
+        }
+
+        int savedTPS = myMod->getSavedValue<int>("tps", 60);
+        int savedFPS = myMod->getSavedValue<int>("fps", 60);
         
+        // Evitamos división por cero de forma estricta como dice el manual
         float tps = g_syncEnabled ? (float)savedFPS : (float)savedTPS;
-        PlayLayer::update(1.0f / tps);
+        if (tps <= 0.f) tps = 60.0f;
+
+        // Escalamos el delta original manteniendo la física sincronizada con la velocidad del nivel
+        float juegoVelocidadFactor = dt * 60.0f; 
+        PlayLayer::update(juegoVelocidadFactor / tps);
     }
 };
 
 // =================================================================
 // HOOK DE LA PANTALLA DE PAUSA (PauseLayer)
 // =================================================================
-class $modify(MyPauseLayer, PauseLayer) { // Usamos dos argumentos para declarar métodos nuevos de forma segura
+class $modify(MyPauseLayer, PauseLayer) {
     
     void onMyMenuButton(cocos2d::CCObject* sender) { 
-        // Obtenemos el valor guardado para mostrárselo al usuario en el menú
-        int savedTPS = Mod::get()->getSavedValue<int>("tps", 60);
+        auto myMod = Mod::get();
+        if (!myMod) return;
+
+        int savedTPS = myMod->getSavedValue<int>("tps", 60);
         std::string tpsTexto = std::to_string(savedTPS) + " TPS";
 
-        // CORREGIDO: Ahora le pasamos el string requerido a la función create
         auto layer = MyOptimizationMenu::create(tpsTexto);
         if (layer) {
             layer->show(); 
         }
     }
 
-    void customSetup() override { // Añadido override por buena práctica de Geode
+    void customSetup() override {
         PauseLayer::customSetup();
         
-        g_targetTPS = (float)Mod::get()->getSavedValue<int>("tps", 60);
-        g_targetFPS = (float)Mod::get()->getSavedValue<int>("fps", 60);
+        auto myMod = Mod::get();
+        if (myMod) {
+            g_targetTPS = (float)myMod->getSavedValue<int>("tps", 60);
+            g_targetFPS = (float)myMod->getSavedValue<int>("fps", 60);
+        }
 
         auto menu = CCMenu::create();
+        if (!menu) return; // Control de punteros nulos de Cocos
+        
         menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
-        auto spr = CCSprite::create("buttom_open.png"_spr);
+        // Usamos un sprite nativo del juego para asegurar que cargue bien en cualquier cel
+        auto spr = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
         if (spr) {
-            spr->setScale(0.28f); 
+            spr->setScale(0.7f); 
 
             auto btn = CCMenuItemSpriteExtra::create(
                 spr, 
                 this, 
-                menu_selector(MyPauseLayer::onMyMenuButton) // Apunta a MyPauseLayer
+                menu_selector(MyPauseLayer::onMyMenuButton)
             );
             
-            auto winSize = CCDirector::sharedDirector()->getWinSize();
-            btn->setPosition({35.0f, winSize.height - 75.0f});
-            
-            menu->addChild(btn);
+            if (btn) {
+                auto winSize = CCDirector::sharedDirector()->getWinSize();
+                btn->setPosition({35.0f, winSize.height - 75.0f});
+                menu->addChild(btn);
+            }
         }
     }
 };
