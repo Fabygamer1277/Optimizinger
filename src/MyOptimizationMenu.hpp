@@ -1,18 +1,14 @@
 #pragma once
-
 #include <Geode/Geode.hpp>
-#include <Geode/ui/Popup.hpp>
 
-// Heredamos de geode::Popup<> de forma limpia sin pasarle argumentos pesados
-class MyOptimizationMenu : public geode::Popup<> {
+using namespace geode::prelude;
+
+class MyOptimizationMenu : public geode::Popup<std::string const&> {
 protected:
-    bool setup() override;
-
-    // Variables para las cajas de texto de la interfaz
-    geode::TextInput* m_tpsInput;
-    geode::TextInput* m_fpsInput;
+    // El método setup ahora recibe el string configurado en el template de la clase base
+    bool setup(std::string const& title) override;
 
 public:
-    static MyOptimizationMenu* create();
-    void onSave(cocos2d::CCObject* sender);
+    // El método create ahora acepta el string que le pasaremos desde el Hook
+    static MyOptimizationMenu* create(std::string const& title);
 };
