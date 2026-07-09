@@ -3,12 +3,16 @@
 #include <Geode/Geode.hpp>
 #include <Geode/ui/Popup.hpp>
 
-using namespace geode::prelude;
-
-class MyOptimizationMenu : public geode::Popup<std::string> {
+// Heredamos de geode::Popup<> de forma limpia sin pasarle argumentos pesados
+class MyOptimizationMenu : public geode::Popup<> {
 protected:
-    bool setup(std::string value) override;
+    bool setup() override;
+
+    // Variables para las cajas de texto de la interfaz
+    geode::TextInput* m_tpsInput;
+    geode::TextInput* m_fpsInput;
 
 public:
-    static MyOptimizationMenu* create(std::string const& value);
+    static MyOptimizationMenu* create();
+    void onSave(cocos2d::CCObject* sender);
 };
