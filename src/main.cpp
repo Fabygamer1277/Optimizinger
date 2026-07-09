@@ -40,13 +40,8 @@ class $modify(PlayLayer) {
 class $modify(MyPauseLayer, PauseLayer) {
     
     void onMyMenuButton(cocos2d::CCObject* sender) { 
-        auto myMod = Mod::get();
-        if (!myMod) return;
-
-        int savedTPS = myMod->getSavedValue<int>("tps", 60);
-        std::string tpsTexto = std::to_string(savedTPS) + " TPS";
-
-        auto layer = MyOptimizationMenu::create(tpsTexto);
+        // CORREGIDO: Ahora llamamos a create() sin argumentos, tal como lo definimos en el .hpp nuevo
+        auto layer = MyOptimizationMenu::create();
         if (layer) {
             layer->show(); 
         }
@@ -67,10 +62,10 @@ class $modify(MyPauseLayer, PauseLayer) {
         menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
-        // Usamos un sprite nativo del juego para asegurar que cargue bien en cualquier cel
-        auto spr = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
+        // CORREGIDO: Ahora cargamos tu botón personalizado 'buttom_open.png' usando la macro _spr
+        auto spr = CCSprite::create("buttom_open.png"_spr);
         if (spr) {
-            spr->setScale(0.7f); 
+            spr->setScale(0.35f); // Ajustamos la escala para que quede estético en la pausa
 
             auto btn = CCMenuItemSpriteExtra::create(
                 spr, 
