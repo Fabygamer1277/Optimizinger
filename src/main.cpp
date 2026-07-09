@@ -1,83 +1,20 @@
-#include <Geode/Geode.hpp>
-#include <Geode/modify/PauseLayer.hpp>
-#include <Geode/modify/PlayLayer.hpp>
 #include "MyOptimizationMenu.hpp"
 
 using namespace geode::prelude;
 
-static float g_targetTPS = 60.0f;
-static float g_targetFPS = 60.0f;
-static bool  g_syncEnabled = false;
-
-// =================================================================
-// HOOK DE LA FÍSICA DEL JUEGO (PlayLayer)
-// =================================================================
-class $modify(PlayLayer) {
-    void update(float dt) override {
-        // Obtenemos los valores de forma segura evitando llamadas pesadas en el bucle principal
-        auto myMod = Mod::get();
-        if (!myMod) {
-            PlayLayer::update(dt);
-            return;
-        }
-
-        int savedTPS = myMod->getSavedValue<int>("tps", 60);
-        int savedFPS = myMod->getSavedValue<int>("fps", 60);
-        
-        // Evitamos división por cero de forma estricta como dice el manual
-        float tps = g_syncEnabled ? (float)savedFPS : (float)savedTPS;
-        if (tps <= 0.f) tps = 60.0f;
-
-        // Escalamos el delta original manteniendo la física sincronizada con la velocidad del nivel
-        float juegoVelocidadFactor = dt * 60.0f; 
-        PlayLayer::update(juegoVelocidadFactor / tps);
+MyOptimizationMenu* MyOptimizationMenu::create(std::string const& title) {
+    auto ret = new MyOptimizationMenu();
+    if (ret && ret->initAnchored(240.f, 160.f, title)) {
+        ret->autorelease();
+        return ret;
     }
-};
+    CC_SAFE_DELETE(ret);
+    return nullptr;
+}
 
-// =================================================================
-// HOOK DE LA PANTALLA DE PAUSA (PauseLayer)
-// =================================================================
-class $modify(MyPauseLayer, PauseLayer) {
+bool MyOptimizationMenu::setup(std::string const& title) {
+    this->setTitle(title);
     
-    void onMyMenuButton(cocos2d::CCObject* sender) { 
-        // Llama a create() sin argumentos, tal como lo dejamos listo en el .hpp
-        auto layer = MyOptimizationMenu::create();
-        if (layer) {
-            layer->show(); 
-        }
-    }
-
-    void customSetup() override {
-        PauseLayer::customSetup();
-        
-        auto myMod = Mod::get();
-        if (myMod) {
-            g_targetTPS = (float)myMod->getSavedValue<int>("tps", 60);
-            g_targetFPS = (float)myMod->getSavedValue<int>("fps", 60);
-        }
-
-        auto menu = CCMenu::create();
-        if (!menu) return; // Control de punteros nulos de Cocos
-        
-        menu->setPosition({0, 0});
-        this->addChild(menu, 100);
-
-        // Cargamos tu botón personalizado 'buttom_open.png' usando la macro _spr
-        auto spr = CCSprite::create("buttom_open.png"_spr);
-        if (spr) {
-            spr->setScale(0.35f); // Ajustamos la escala para que quede estético en la pausa
-
-            auto btn = CCMenuItemSpriteExtra::create(
-                spr, 
-                this, 
-                menu_selector(MyPauseLayer::onMyMenuButton)
-            );
-            
-            if (btn) {
-                auto winSize = CCDirector::sharedDirector()->getWinSize();
-                btn->setPosition({35.0f, winSize.height - 75.0f});
-                menu->addChild(btn);
-            }
-        }
-    }
-};
+    // Aquí puedes meter tus opciones de optimización más adelante
+    return true;
+}
