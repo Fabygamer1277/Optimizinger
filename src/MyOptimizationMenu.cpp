@@ -1,14 +1,10 @@
 #include "MyOptimizationMenu.hpp"
-#include <cocos-ext.h>
 
-using namespace cocos2d;
-using namespace cocos2d::extension;
+using namespace geode::prelude;
 
 MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     auto ret = new MyOptimizationMenu();
-    ret->m_value = value; // Guardamos el valor antes de inicializar si se ocupa
-    
-    if (ret && ret->initAnchored(360.f, 240.f)) {
+    if (ret && ret->initAnchored(360.f, 240.f, value)) { // <- Asegúrate de pasar 'value' aquí
         ret->autorelease();
         return ret;
     }
@@ -16,14 +12,14 @@ MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     return nullptr;
 }
 
-bool MyOptimizationMenu::setup() {
+bool MyOptimizationMenu::setup(std::string const& value) {
     this->setTitle("FPS OPTIMIZER");
 
     if (m_bgSprite) {
         m_bgSprite->setVisible(false);
     }
 
-    auto bgMorado = CCScale9Sprite::create("menu_purple.png"_spr);
+    auto bgMorado = CCScale9Sprite::create("GJ_square06.png");
     if (bgMorado) {
         bgMorado->setContentSize(m_size);
         bgMorado->setPosition(m_size / 2);
@@ -34,24 +30,15 @@ bool MyOptimizationMenu::setup() {
         m_closeBtn->setPosition({ -m_size.width / 2 + 15.f, m_size.height / 2 - 15.f });
     }
 
-    // Interfaz del menú
-    auto tpsLabel = CCLabelBMFont::create("Ticks per Second (TPS):", "bigFont.fnt");
-    tpsLabel->setScale(0.4f);
+    auto tpsLabel = CCLabelBMFont::create("Ticks Por Segundo (TPS)", "goldFont.fnt");
+    tpsLabel->setScale(0.7f);
     tpsLabel->setPosition({ m_size.width / 2, m_size.height / 2 + 30.f });
     m_mainLayer->addChild(tpsLabel);
 
-    int currentTPS = geode::Mod::get()->getSavedValue<int>("tps", 60);
-    std::string tpsStr = std::to_string(currentTPS);
-    
-    auto tpsValue = CCLabelBMFont::create(tpsStr.c_str(), "bigFont.fnt");
-    tpsValue->setScale(0.5f);
-    tpsValue->setColor({ 0, 255, 0 });
+    auto tpsValue = CCLabelBMFont::create(value.c_str(), "bigFont.fnt");
+    tpsValue->setScale(0.8f);
     tpsValue->setPosition({ m_size.width / 2, m_size.height / 2 });
     m_mainLayer->addChild(tpsValue);
 
     return true;
-}
-
-void MyOptimizationMenu::onClose(CCObject* sender) {
-    geode::Popup<>::onClose(sender);
 }
