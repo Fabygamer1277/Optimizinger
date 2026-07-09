@@ -1,34 +1,33 @@
 {
-    "geode": "5.7.1",
-    "gd": {
-        "win": "2.2081",
-        "android": "2.2081",
-        "mac": "2.2081",
-        "ios": "2.2081"
-    },
+    "geode": "4.0.0",
     "id": "fabygamer1277.fps-optimizer",
+    "version": "1.0.0",
     "name": "FPS Optimizer",
     "developer": "Fabygamer1277",
-    "description": "Bypass de física real y personalización visual con integración de CBF.",
-    "version": "1.0.0",
+    "description": "Optimiza los FPS y TPS de tu juego de manera sencilla.",
     "dependencies": [
         {
             "id": "theyareonit.click-between-frames",
-            "version": ">=1.0.0",
-            "importance": "required"
+            "version": "v1.1.3",
+            "importance": "recommended"
         }
     ],
-    "resources": {
-        "sprites": [
-            "box_values.png",
-            "buttom_open.png",
-            "menu_purple.png"
-        ],
-        "fonts": {
-            "gothic-font": {
-                "path": "resources/fonts/MontenegrinGothicOne-Regular.ttf",
-                "size": 32
-            }
+    "settings": {
+        "tps": {
+            "name": "Target TPS",
+            "description": "Ticks por segundo por defecto para las físicas.",
+            "type": "int",
+            "default": 60,
+            "min": 15,
+            "max": 1000
+        },
+        "fps": {
+            "name": "Target FPS",
+            "description": "Cuadros por segundo por defecto.",
+            "type": "int",
+            "default": 60,
+            "min": 15,
+            "max": 1000
         }
     }
 }
