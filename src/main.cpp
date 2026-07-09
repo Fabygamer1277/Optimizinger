@@ -40,7 +40,7 @@ class $modify(PlayLayer) {
 class $modify(MyPauseLayer, PauseLayer) {
     
     void onMyMenuButton(cocos2d::CCObject* sender) { 
-        // CORREGIDO: Ahora llamamos a create() sin argumentos, tal como lo definimos en el .hpp nuevo
+        // Llama a create() sin argumentos, tal como lo dejamos listo en el .hpp
         auto layer = MyOptimizationMenu::create();
         if (layer) {
             layer->show(); 
@@ -62,7 +62,7 @@ class $modify(MyPauseLayer, PauseLayer) {
         menu->setPosition({0, 0});
         this->addChild(menu, 100);
 
-        // CORREGIDO: Ahora cargamos tu botón personalizado 'buttom_open.png' usando la macro _spr
+        // Cargamos tu botón personalizado 'buttom_open.png' usando la macro _spr
         auto spr = CCSprite::create("buttom_open.png"_spr);
         if (spr) {
             spr->setScale(0.35f); // Ajustamos la escala para que quede estético en la pausa
