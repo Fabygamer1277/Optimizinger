@@ -1,5 +1,6 @@
 {
-    "geode": "4.0.0",
+    "geode": "5.7.1",
+    "gd": "2.2081",
     "id": "fabygamer1277.fps-optimizer",
     "version": "1.0.0",
     "name": "FPS Optimizer",
