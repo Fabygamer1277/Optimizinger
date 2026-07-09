@@ -36,5 +36,18 @@
             "min": 60,
             "max": 540
         }
+    },
+    "resources": {
+        "sprites": [
+            "box_values.png",
+            "buttom_open.png",
+            "menu_purple.png"
+        ],
+        "fonts": {
+            "gothic-font": {
+                "path": "resources/fonts/MontenegrinGothicOne-Regular.ttf",
+                "size": 32
+            }
+        }
     }
 }
