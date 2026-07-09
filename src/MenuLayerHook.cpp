@@ -4,16 +4,21 @@
 
 using namespace geode::prelude;
 
-class $modify(MenuLayer) {
+// Usamos dos argumentos para poder agregar funciones personalizadas de forma segura
+class $modify(MyMenuLayer, MenuLayer) {
     bool init() override {
         if (!MenuLayer::init()) return false;
 
         auto menu = this->getChildByID("bottom-menu");
         if (menu) {
             auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
+            
             auto btn = CCMenuItemSpriteExtra::create(
-                sprite, this, menu_selector(MenuLayer::onMyOptimizationMenu)
+                sprite, 
+                this, 
+                menu_selector(MyMenuLayer::onMyOptimizationMenu) // CORREGIDO: Apunta a MyMenuLayer
             );
+            
             menu->addChild(btn);
             menu->updateLayout();
         }
@@ -21,7 +26,8 @@ class $modify(MenuLayer) {
         return true;
     }
 
-    void onMyOptimizationMenu(CCObject* sender) {
+    // Esta función ahora pertenece a nuestro contenedor del hook y es segura de enlazar
+    void onMyOptimizationMenu(cocos2d::CCObject* sender) {
         auto layer = MyOptimizationMenu::create("Datos de optimización");
         if (layer) {
             layer->show();
