@@ -1,8 +1,11 @@
 #include "MyOptimizationMenu.hpp"
 
-MyOptimizationMenu* MyOptimizationMenu::create() {
+using namespace cocos2d;
+
+MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     auto ret = new MyOptimizationMenu();
-    if (ret && ret->init()) {
+    // geode::Popup usa un tamaño por defecto en su create (ej: 240x160)
+    if (ret && ret->initAnchored(360.f, 240.f, value)) {
         ret->autorelease();
         return ret;
     }
@@ -10,125 +13,53 @@ MyOptimizationMenu* MyOptimizationMenu::create() {
     return nullptr;
 }
 
-bool MyOptimizationMenu::init() {
-    // Inicializamos la alerta vacía (0) para usar tus imágenes personalizadas
-    if (!FLAlertLayer::init(0)) return false;
+bool MyOptimizationMenu::setup(std::string const& value) {
+    // Definimos el título usando el método nativo de Geode::Popup
+    this->setTitle("FPS OPTIMIZER", "goldFont.fnt", 0.85f);
 
-    auto winSize = CCDirector::sharedDirector()->getWinSize();
-    
-    // 1. Contenedor de botones
-    auto menu = CCMenu::create();
-    m_mainLayer->addChild(menu);
+    auto menuSize = m_buttonMenu->getContentSize();
 
-    // 2. Fondo personalizado de tu menú (menu_purple.png)
-    auto customBg = CCSprite::create("menu_purple.png");
-    if (customBg) {
-        customBg->setPosition(winSize / 2);
-        customBg->setScale(0.55f); 
-        m_mainLayer->addChild(customBg, -1);
+    // 1. Ocultar el fondo marrón por defecto e integrar el tuyo morado
+    if (m_bgSprite) {
+        m_bgSprite->setVisible(false);
     }
 
-    // 3. Título del menú superior
-    auto title = CCLabelBMFont::create("FPS OPTIMIZER", "goldFont.fnt");
-    title->setPosition({ winSize.width / 2, (winSize.height / 2) + 85.f });
-    title->setScale(0.75f);
-    m_mainLayer->addChild(title);
+    auto bgMorado = CCScale9Sprite::create("menu_purple.png"_spr);
+    if (bgMorado) {
+        bgMorado->setContentSize(m_size);
+        bgMorado->setPosition(m_size / 2);
+        m_mainLayer->addChild(bgMorado, -1);
+    }
 
-    // 4. Botón de cerrar (X)
+    // 2. Botón de cerrar (Lo movemos a la esquina superior izquierda del Popup)
     auto closeSprite = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
     auto closeBtn = CCMenuItemSpriteExtra::create(
         closeSprite, this, menu_selector(MyOptimizationMenu::onClose)
     );
-    closeBtn->setPosition({ -135.f, 85.f });
-    menu->addChild(closeBtn);
+    closeBtn->setPosition({ -m_size.width / 2 + 15.f, m_size.height / 2 - 15.f });
+    m_buttonMenu->addChild(closeBtn);
 
-    // =================================================================
-    // SECCIÓN 1: CONFIGURACIÓN DE TPS (Fila Superior)
-    // =================================================================
-    
-    // Texto indicativo
+    // 3. Textos e Interfaz interna
     auto tpsLabel = CCLabelBMFont::create("Ticks per Second (TPS):", "bigFont.fnt");
-    tpsLabel->setPosition({ winSize.width / 2 - 40.f, winSize.height / 2 + 35.f });
-    tpsLabel->setScale(0.35f);
+    tpsLabel->setScale(0.4f);
+    tpsLabel->setPosition({ m_size.width / 2, m_size.height / 2 + 30.f });
     m_mainLayer->addChild(tpsLabel);
 
-    // Primera copia de box_values.png como contenedor visual
-    auto tpsBoxBg = CCSprite::create("box_values.png");
-    if (tpsBoxBg) {
-        tpsBoxBg->setPosition({ winSize.width / 2 + 75.f, winSize.height / 2 + 35.f });
-        tpsBoxBg->setScaleX(0.25f); // Ajustamos el ancho para que quepa el número
-        tpsBoxBg->setScaleY(0.4f);
-        m_mainLayer->addChild(tpsBoxBg);
-    }
-
-    // Caja de entrada de texto interactiva para TPS
-    m_tpsInput = CCTextInputNode::create(60.f, 20.f, "1000", "bigFont.fnt");
-    m_tpsInput->setPosition({ winSize.width / 2 + 75.f, winSize.height / 2 + 35.f });
-    m_tpsInput->setDelegate(this);
-    m_tpsInput->setAllowedChars("0123456789"); // Evita que metan letras
-    m_tpsInput->setMaxLabelLength(4);          // Máximo 4 dígitos (hasta 2000)
-    m_tpsInput->setScale(0.5f);
-    m_mainLayer->addChild(m_tpsInput);
-
-    // =================================================================
-    // SECCIÓN 2: CONFIGURACIÓN DE FPS (Fila Inferior)
-    // =================================================================
+    // Texto del valor actual (Cargado desde guardado)
+    int currentTPS = geode::Mod::get()->getSavedValue<int>("tps", 60);
+    std::string tpsStr = std::to_string(currentTPS);
     
-    // Texto indicativo
-    auto fpsLabel = CCLabelBMFont::create("Visual Frames (FPS):", "bigFont.fnt");
-    fpsLabel->setPosition({ winSize.width / 2 - 45.f, winSize.height / 2 - 15.f });
-    fpsLabel->setScale(0.35f);
-    m_mainLayer->addChild(fpsLabel);
-
-    // Segunda copia de box_values.png como contenedor visual
-    auto fpsBoxBg = CCSprite::create("box_values.png");
-    if (fpsBoxBg) {
-        fpsBoxBg->setPosition({ winSize.width / 2 + 75.f, winSize.height / 2 - 15.f });
-        fpsBoxBg->setScaleX(0.25f);
-        fpsBoxBg->setScaleY(0.4f);
-        m_mainLayer->addChild(fpsBoxBg);
-    }
-
-    // Caja de entrada de texto interactiva para FPS
-    m_fpsInput = CCTextInputNode::create(60.f, 20.f, "60", "bigFont.fnt");
-    m_fpsInput->setPosition({ winSize.width / 2 + 75.f, winSize.height / 2 - 15.f });
-    m_fpsInput->setDelegate(this);
-    m_fpsInput->setAllowedChars("0123456789");
-    m_fpsInput->setMaxLabelLength(3);          // Máximo 3 dígitos (hasta 540)
-    m_fpsInput->setScale(0.5f);
-    m_mainLayer->addChild(m_fpsInput);
+    auto tpsValue = CCLabelBMFont::create(tpsStr.c_str(), "bigFont.fnt");
+    tpsValue->setScale(0.5f);
+    tpsValue->setColor({ 0, 255, 0 });
+    tpsValue->setPosition({ m_size.width / 2, m_size.height / 2 });
+    m_mainLayer->addChild(tpsValue);
 
     return true;
 }
 
-// Filtro en tiempo real para hacer cumplir los rangos numéricos que solicitaste
-void MyOptimizationMenu::textChanged(CCTextInputNode* input) {
-    std::string valueStr = input->getString();
-    if (valueStr.empty()) return;
-
-    int value = std::stoi(valueStr);
-
-    if (input == m_tpsInput) {
-        // Rango TPS: Mayor a 30 y Menor a 2000
-        if (value > 2000) input->setString("2000");
-        // Nota: La validación del mínimo de 30 se hace al cerrar o perder enfoque para dejar escribir
-    } 
-    else if (input == m_fpsInput) {
-        // Rango FPS: Mayor a 60 y Menor a 540
-        if (value > 540) input->setString("540");
-    }
-}
-
-void MyOptimizationMenu::onClose(cocos2d::CCObject* sender) {
-    // Validaciones finales de mínimos antes de guardar e irse
-    if (!m_tpsInput->getString().empty() && std::stoi(m_tpsInput->getString()) < 30) {
-        m_tpsInput->setString("30");
-    }
-    if (!m_fpsInput->getString().empty() && std::stoi(m_fpsInput->getString()) < 60) {
-        m_fpsInput->setString("60");
-    }
-
-    // Aquí puedes aplicar los valores reales al motor usando tu lógica de bypass o CBF de Geode
-
-    this->keyBackClicked(); // Cierre seguro de la alerta flotante
+void MyOptimizationMenu::onClose(CCObject* sender) {
+    this->setKeypadEnabled(false);
+    this->setTouchEnabled(false);
+    this->removeFromParentAndCleanup(true);
 }
