@@ -4,36 +4,27 @@
 
 using namespace geode::prelude;
 
-class $modify(MyMenuLayer, MenuLayer) {
-    // 1. Ponemos la función aquí arriba para que init() sepa que existe
-    void onOpenOptimizationMenu(cocos2d::CCObject* sender) {
-        auto menuLayer = MyOptimizationMenu::create();
-        if (menuLayer) {
-            menuLayer->show();
-        }
-    }
-
-    bool init() {
+class $modify(MenuLayer) {
+    bool init() override {
         if (!MenuLayer::init()) return false;
 
-        auto bottomMenu = this->getChildByID("bottom-menu");
-        if (bottomMenu) {
-            auto mySprite = CCSprite::create("buttom_open.png");
-            
-            if (mySprite) {
-                mySprite->setScale(0.35f); 
-
-                auto myButton = CCMenuItemSpriteExtra::create(
-                    mySprite,
-                    this,
-                    menu_selector(MyMenuLayer::onOpenOptimizationMenu) // Usamos el nombre de nuestro contenedor
-                );
-
-                bottomMenu->addChild(myButton);
-                bottomMenu->updateLayout();
-            }
+        auto menu = this->getChildByID("bottom-menu");
+        if (menu) {
+            auto sprite = CCSprite::createWithSpriteFrameName("GJ_plusBtn_001.png");
+            auto btn = CCMenuItemSpriteExtra::create(
+                sprite, this, menu_selector(MenuLayer::onMyOptimizationMenu)
+            );
+            menu->addChild(btn);
+            menu->updateLayout();
         }
 
         return true;
+    }
+
+    void onMyOptimizationMenu(CCObject* sender) {
+        auto layer = MyOptimizationMenu::create("Datos de optimización");
+        if (layer) {
+            layer->show();
+        }
     }
 };
