@@ -12,7 +12,6 @@ MyOptimizationMenu* MyOptimizationMenu::create(std::string const& value) {
     return nullptr;
 }
 
-// Modificado: Ahora recibe 'std::string value' por valor para coincidir con el .hpp
 bool MyOptimizationMenu::setup(std::string value) {
     this->setTitle("FPS OPTIMIZER");
 
@@ -20,7 +19,8 @@ bool MyOptimizationMenu::setup(std::string value) {
         m_bgSprite->setVisible(false);
     }
 
-    auto bgMorado = CCScale9Sprite::create("GJ_square06.png");
+    // CORREGIDO: createWithSpriteFrameName para evitar crashes por texturas no encontradas
+    auto bgMorado = CCScale9Sprite::createWithSpriteFrameName("GJ_square06.png");
     if (bgMorado) {
         bgMorado->setContentSize(m_size);
         bgMorado->setPosition(m_size / 2);
@@ -32,14 +32,18 @@ bool MyOptimizationMenu::setup(std::string value) {
     }
 
     auto tpsLabel = CCLabelBMFont::create("Ticks Por Segundo (TPS)", "goldFont.fnt");
-    tpsLabel->setScale(0.7f);
-    tpsLabel->setPosition({ m_size.width / 2, m_size.height / 2 + 30.f });
-    m_mainLayer->addChild(tpsLabel);
+    if (tpsLabel) {
+        tpsLabel->setScale(0.7f);
+        tpsLabel->setPosition({ m_size.width / 2, m_size.height / 2 + 30.f });
+        m_mainLayer->addChild(tpsLabel);
+    }
 
     auto tpsValue = CCLabelBMFont::create(value.c_str(), "bigFont.fnt");
-    tpsValue->setScale(0.8f);
-    tpsValue->setPosition({ m_size.width / 2, m_size.height / 2 });
-    m_mainLayer->addChild(tpsValue);
+    if (tpsValue) {
+        tpsValue->setScale(0.8f);
+        tpsValue->setPosition({ m_size.width / 2, m_size.height / 2 });
+        m_mainLayer->addChild(tpsValue);
+    }
 
     return true;
 }
